@@ -17,3 +17,5 @@ https://efferd.com/blocks/header
 https://billingsdk.com/docs
 # Animated Icons
 https://www.chamaac.com/components/animated-icons
+
+pnpm dlx shadcn@latest add @efferd/header-2
