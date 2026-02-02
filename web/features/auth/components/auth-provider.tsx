@@ -10,14 +10,14 @@ import { useRouter } from "next/navigation"
 const REFRESH_SKEW = 60;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { accessExpiresAt, setAccessExpiresAt, setUnauthenticated } = useAuthStore();
+  const { accessExpiresAt, serverTimeOffsetSec, setAccessExpiresAt, setServerTimeOffsetSec, setUnauthenticated } = useAuthStore();
   const router = useRouter();
   const refreshTimerRef = React.useRef<NodeJS.Timeout>(null);
 
   const scheduleRefresh = React.useCallback(() => {
     if (!accessExpiresAt) return;
 
-    const now = Math.floor(Date.now() / 1000);
+    const now = Math.floor(Date.now() / 1000) + (serverTimeOffsetSec || 0);
     const timeLeft = accessExpiresAt - now - REFRESH_SKEW;
     const delay = Math.max(0, timeLeft * 1000);
 
@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await api.post<TokenPayload>('/auth/refresh');
         console.log('[Auth] Token refreshed');
         setAccessExpiresAt(data.access_expires_at);
+        setServerTimeOffsetSec(data.server_time - Math.floor(Date.now() / 1000));
         // Reschedule
         // scheduleRefresh() will be triggered by useEffect dependency on accessExpiresAt
       } catch (error) {
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push('/login');
       }
     }, delay);
-  }, [accessExpiresAt, setAccessExpiresAt, setUnauthenticated, router]);
+  }, [accessExpiresAt, serverTimeOffsetSec, setAccessExpiresAt, setServerTimeOffsetSec, setUnauthenticated, router]);
 
   React.useEffect(() => {
     scheduleRefresh();

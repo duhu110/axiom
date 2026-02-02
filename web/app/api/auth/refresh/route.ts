@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { TokenPayload } from '@/types/auth';
 
@@ -7,9 +7,16 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 export async function POST() {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get('refresh_token')?.value;
+  const accessToken = cookieStore.get('access_token')?.value;
 
   if (!refreshToken) {
+    console.warn('[AuthRefresh] Missing refresh_token cookie');
     return NextResponse.json({ code: 401, msg: 'No refresh token' }, { status: 401 });
+  }
+
+  if (!accessToken) {
+    console.warn('[AuthRefresh] Missing access_token cookie');
+    return NextResponse.json({ code: 401, msg: 'No access token' }, { status: 401 });
   }
 
   try {
@@ -18,22 +25,25 @@ export async function POST() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Backend expects access token in Authorization header, 
-        // but for refresh endpoint it might expect refresh token in body 
-        // OR access token in header (even if expired).
-        // Let's assume standard OAuth2: refresh token in body.
-        // Wait, design doc says: 
-        // "需要 Authorization: Bearer <access_token> 且 body 传 refresh_token"
-        // This is tricky if access token is missing from cookie (expired/deleted).
-        // Let's try to get access token, even if expired.
-        'Authorization': `Bearer ${cookieStore.get('access_token')?.value || ''}`
+        'Authorization': `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
     if (!response.ok) {
-      // Refresh failed
-      return NextResponse.json({ code: 401, msg: 'Refresh failed' }, { status: 401 });
+      const contentType = response.headers.get('content-type') ?? '';
+      let msg = `Refresh failed: ${response.status}`;
+
+      if (contentType.includes('application/json')) {
+        const payload = await response.json().catch(() => null);
+        msg = payload?.msg || payload?.detail || msg;
+      } else {
+        const text = await response.text().catch(() => '');
+        msg = text || msg;
+      }
+
+      console.warn('[AuthRefresh] Backend refresh failed', { status: response.status, msg });
+      return NextResponse.json({ code: response.status, msg }, { status: response.status });
     }
 
     const result = await response.json();
@@ -43,8 +53,9 @@ export async function POST() {
 
     const tokenData: TokenPayload = result.data;
 
-    // Update cookies
-    cookieStore.set('access_token', tokenData.access_token, {
+    const res = NextResponse.json({ code: 0, msg: 'ok', data: tokenData });
+
+    res.cookies.set('access_token', tokenData.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -54,7 +65,7 @@ export async function POST() {
 
     // Refresh token might be rotated
     if (tokenData.refresh_token) {
-      cookieStore.set('refresh_token', tokenData.refresh_token, {
+      res.cookies.set('refresh_token', tokenData.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -63,7 +74,7 @@ export async function POST() {
       });
     }
 
-    return NextResponse.json({ code: 0, msg: 'ok', data: tokenData });
+    return res;
 
   } catch (error) {
     console.error('Refresh error:', error);

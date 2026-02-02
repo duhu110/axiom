@@ -7,7 +7,7 @@ import { LoginFormValues } from '../types';
 
 export function useAuth() {
   const router = useRouter();
-  const { setAuthenticated, setUnauthenticated, setUser } = useAuthStore();
+  const { setAuthenticated, setUnauthenticated, setServerTimeOffsetSec } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
 
   const login = useCallback(async (values: LoginFormValues) => {
@@ -27,6 +27,7 @@ export function useAuth() {
 
       // 3. Update Store
       setAuthenticated(userResult.data, loginResult.data.access_expires_at);
+      setServerTimeOffsetSec(loginResult.data.server_time - Math.floor(Date.now() / 1000));
       
       toast.success('登录成功');
       router.push('/'); // Or redirect to 'next' param
@@ -36,7 +37,7 @@ export function useAuth() {
     } finally {
       setIsLoading(false);
     }
-  }, [router, setAuthenticated]);
+  }, [router, setAuthenticated, setServerTimeOffsetSec]);
 
   const logout = useCallback(async () => {
     try {

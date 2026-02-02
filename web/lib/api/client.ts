@@ -36,7 +36,15 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     });
 
     if (response.status === 401 || response.status === 403) {
-      throw new AuthError('Session expired or unauthorized');
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        const payload = await response.json().catch(() => null);
+        const msg = payload?.msg || payload?.detail || 'Session expired or unauthorized';
+        throw new AuthError(msg, payload);
+      }
+
+      const text = await response.text().catch(() => '');
+      throw new AuthError(text || 'Session expired or unauthorized');
     }
 
     if (!response.ok) {
