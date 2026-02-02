@@ -10,12 +10,10 @@ export async function POST() {
   const accessToken = cookieStore.get('access_token')?.value;
 
   if (!refreshToken) {
-    console.warn('[AuthRefresh] Missing refresh_token cookie');
     return NextResponse.json({ code: 401, msg: 'No refresh token' }, { status: 401 });
   }
 
   if (!accessToken) {
-    console.warn('[AuthRefresh] Missing access_token cookie');
     return NextResponse.json({ code: 401, msg: 'No access token' }, { status: 401 });
   }
 

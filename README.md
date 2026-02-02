@@ -19,3 +19,9 @@ https://billingsdk.com/docs
 https://www.chamaac.com/components/animated-icons
 
 pnpm dlx shadcn@latest add @efferd/header-2
+
+<!-- rich-text editor -->
+https://platejs.org/?utm_source=ui.shadcn.com&utm_medium=referral&utm_campaign=directory
+
+# Core building blocks for AI apps.
+https://www.prompt-kit.com/

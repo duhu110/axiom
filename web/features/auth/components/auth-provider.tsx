@@ -4,6 +4,7 @@ import * as React from "react"
 import { useAuthStore } from "@/stores/auth-store"
 import { api } from "@/lib/api/client"
 import { TokenPayload } from "@/types/auth"
+import { AuthError } from "@/types/api"
 import { useRouter } from "next/navigation"
 
 // Refresh skew in seconds (refresh 60s before expiration)
@@ -38,6 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Reschedule
         // scheduleRefresh() will be triggered by useEffect dependency on accessExpiresAt
       } catch (error) {
+        if (error instanceof AuthError && (error.message === 'No access token' || error.message === 'No refresh token')) {
+          setUnauthenticated();
+          router.push('/login');
+          return;
+        }
         console.error('[Auth] Refresh failed:', error);
         setUnauthenticated();
         router.push('/login');

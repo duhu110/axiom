@@ -56,8 +56,6 @@ export function Header() {
 								{link.label}
 							</a>
 						))}
-						<Button variant="outline">Sign In</Button>
-						<Button>Get Started</Button>
 					</div>
 					<ModeToggle />
 					<MobileNav />
