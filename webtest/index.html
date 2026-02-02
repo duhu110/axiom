@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent SSE Test</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex;
+            height: 100vh;
+            box-sizing: border-box;
+            gap: 20px;
+        }
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 60%;
+        }
+        .sidebar {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f5f5f5;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        #chat-box { 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            flex: 1; 
+            overflow-y: auto; 
+            margin-bottom: 10px; 
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        .message { margin-bottom: 10px; }
+        .user { color: blue; }
+        .agent { color: green; }
+        .log-entry { border-bottom: 1px solid #ddd; padding: 2px 0; }
+        .log-time { color: #888; margin-right: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Agent SSE Test</h1>
+        <div style="margin-bottom: 10px;">
+            <input type="text" id="token" placeholder="Enter Access Token" style="width: 100%; padding: 5px; box-sizing: border-box;">
+        </div>
+        <div id="chat-box"></div>
+        <div class="input-area">
+            <input type="text" id="query" placeholder="Type a message..." style="flex: 1; padding: 5px;">
+            <button onclick="sendMessage()" style="padding: 5px 15px;">Send</button>
+        </div>
+    </div>
+    
+    <div class="sidebar" id="log-box">
+        <h3>SSE Raw Output</h3>
+        <div id="session-info" style="margin-bottom: 10px; font-weight: bold;"></div>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const queryInput = document.getElementById('query');
+        const tokenInput = document.getElementById('token');
+        const logsContainer = document.getElementById('logs');
+        
+        // Generate UUID function
+        function uuidv4() {
+            return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+                (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> (+c / 4)).toString(16)
+            );
+        }
+        
+        // Generate session ID on load
+        const sessionId = uuidv4();
+        document.getElementById('session-info').textContent = `Session ID: ${sessionId}`;
+
+        function addLog(text) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="log-time">[${time}]</span>${text}`;
+            logsContainer.appendChild(entry);
+            logsContainer.parentElement.scrollTop = logsContainer.parentElement.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const query = queryInput.value;
+            const token = tokenInput.value;
+            if (!query) return;
+            
+            if (!token) {
+                alert("Please enter an access token.");
+                return;
+            }
+
+            // Add user message
+            const userDiv = document.createElement('div');
+            userDiv.className = 'message user';
+            userDiv.textContent = 'User: ' + query;
+            chatBox.appendChild(userDiv);
+            queryInput.value = '';
+
+            // Create agent message container
+            const agentDiv = document.createElement('div');
+            agentDiv.className = 'message agent';
+            agentDiv.textContent = 'Agent: ';
+            chatBox.appendChild(agentDiv);
+            
+            addLog(`>>> Sending: ${query}`);
+
+            try {
+                const response = await fetch('http://localhost:8000/agent/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        chat_history: [],
+                        session_id: sessionId
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    addLog(chunk); // Log raw chunk
+                    
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('0:')) {
+                            // 0:"text" -> text
+                            try {
+                                const text = JSON.parse(line.substring(2));
+                                agentDiv.textContent += text;
+                            } catch (e) {
+                                console.error('Error parsing JSON:', e);
+                            }
+                        }
+                    }
+                    
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+                addLog('<<< Stream finished');
+            } catch (error) {
+                console.error('Error:', error);
+                agentDiv.textContent += ' [Error: ' + error.message + ']';
+                addLog(`!!! Error: ${error.message}`);
+            }
+        }
+        
+        // Allow Enter key to send
+        queryInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
