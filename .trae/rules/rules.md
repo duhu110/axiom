@@ -5,3 +5,4 @@
     4 alembic 管理数据库迁移
     5 参照 server\src\services\logging_service.py 配置重要内容的日志
     6 全部POST接口 server\src\response.py server\src\exceptions.py 管理返回,为每个接口配备完整的SCALAR文档设置，包括接口输入输出
+    7 前端使用BUN作为包管理工具
