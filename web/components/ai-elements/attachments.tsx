@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import { Button } from "@/components/ui/button";
 import {
   HoverCard,
@@ -218,7 +216,6 @@ export const AttachmentPreview = ({
     isGrid: boolean
   ) =>
     isGrid ? (
-      // biome-ignore lint/a11y/no-img-element: Using img for dynamic blob URLs
       <img
         alt={filename || "Image"}
         className="size-full object-cover"
@@ -227,7 +224,6 @@ export const AttachmentPreview = ({
         width={96}
       />
     ) : (
-      // biome-ignore lint/a11y/no-img-element: Using img for dynamic blob URLs
       <img
         alt={filename || "Image"}
         className="size-full rounded object-cover"
