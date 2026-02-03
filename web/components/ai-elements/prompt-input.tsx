@@ -324,7 +324,7 @@ export const PromptInputActionAddAttachments = ({
 
 export interface PromptInputMessage {
   text: string;
-  files: FileUIPart[];
+  files: (FileUIPart & { id: string })[];
 }
 
 export type PromptInputProps = Omit<
@@ -718,7 +718,7 @@ export const PromptInput = ({
         return item;
       })
     )
-      .then((convertedFiles: FileUIPart[]) => {
+      .then((convertedFiles: (FileUIPart & { id: string })[]) => {
         try {
           const result = onSubmit({ text, files: convertedFiles }, event);
 

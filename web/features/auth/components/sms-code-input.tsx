@@ -42,7 +42,7 @@ export const SmsCodeInput = React.forwardRef<HTMLInputElement, SmsCodeInputProps
         } else {
           toast.error(result.error || "发送失败");
         }
-      } catch (error) {
+      } catch {
         toast.error("发送失败，请稍后重试");
       } finally {
         setIsLoading(false);

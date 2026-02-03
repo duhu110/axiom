@@ -110,7 +110,7 @@ export async function getMeAction() {
       },
     });
     return { success: true, data: user };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Failed to fetch user' };
   }
 }

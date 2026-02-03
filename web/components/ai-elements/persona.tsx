@@ -171,7 +171,7 @@ const PersonaWithoutModel = memo(
 PersonaWithoutModel.displayName = "PersonaWithoutModel";
 
 // Rive API requires direct value mutation
-/* eslint-disable react-hooks/rules-of-hooks */
+ 
 export const Persona: FC<PersonaProps> = memo(
   ({
     variant = "obsidian",
@@ -251,23 +251,28 @@ export const Persona: FC<PersonaProps> = memo(
     const asleepInput = useStateMachineInput(rive, stateMachine, "asleep");
 
     // Rive API requires direct value mutation on state machine inputs
-    useEffect(() => {
-      const updateInputs = () => {
-        if (listeningInput) {
-          listeningInput.value = state === "listening";
-        }
-        if (thinkingInput) {
-          thinkingInput.value = state === "thinking";
-        }
-        if (speakingInput) {
-          speakingInput.value = state === "speaking";
-        }
-        if (asleepInput) {
-          asleepInput.value = state === "asleep";
-        }
-      };
-      updateInputs();
-    }, [state, listeningInput, thinkingInput, speakingInput, asleepInput]);
+    /* eslint-disable react-hooks/immutability -- Rive API requires direct mutation */
+    useEffect(
+      () => {
+        const updateInputs = () => {
+          if (listeningInput) {
+            listeningInput.value = state === "listening";
+          }
+          if (thinkingInput) {
+            thinkingInput.value = state === "thinking";
+          }
+          if (speakingInput) {
+            speakingInput.value = state === "speaking";
+          }
+          if (asleepInput) {
+            asleepInput.value = state === "asleep";
+          }
+        };
+        updateInputs();
+      },
+      [state, listeningInput, thinkingInput, speakingInput, asleepInput]
+    );
+    /* eslint-enable react-hooks/immutability */
 
     const Component = source.hasModel ? PersonaWithModel : PersonaWithoutModel;
 

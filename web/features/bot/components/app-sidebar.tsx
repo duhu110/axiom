@@ -1,168 +1,53 @@
 "use client"
 
 import * as React from "react"
-import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
-} from "lucide-react"
-
-import { NavMain } from "@/features/bot/components/nav-main"
-import { NavProjects } from "@/features/bot/components/nav-projects"
+import { CirclePlus } from "lucide-react"
+import { LogoIcon } from "@/features/bot/components/logo"
 import { NavUser } from "@/features/bot/components/nav-user"
-import { TeamSwitcher } from "@/features/bot/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenu,
+  useSidebar,
 } from "@/components/ui/sidebar"
 
-// This is sample data.
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  teams: [
-    {
-      name: "Acme Inc",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
-  ],
+import { mockUser } from "@/app/(public)/bot/mock-data"
+
+import ChatHistory from "@/features/bot/components/chat-history"
+import { SearchForm } from "@/features/bot/components/search-form"
+
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import type { Conversation } from "@/features/bot/types"
+
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  conversations: Conversation[];
+  activeConversationId?: string;
+  onConversationSelect?: (conversationId: string) => void;
+  onNewConversation?: () => void;
+  onRename?: (conversationId: string, newTitle: string) => Promise<void>;
+  onDelete?: (conversationId: string) => Promise<void>;
+  onArchive?: (conversationId: string) => Promise<void>;
+  onUnarchive?: (conversationId: string) => Promise<void>;
 }
 
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+export function AppSidebar({
+  conversations,
+  activeConversationId,
+  onConversationSelect,
+  onNewConversation,
+  onRename,
+  onDelete,
+  onArchive,
+  onUnarchive,
+  ...props
+}: AppSidebarProps) {
+  const { state } = useSidebar()
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar
       collapsible="icon"
@@ -170,14 +55,49 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     >
       <SidebarHeader>
         <SidebarTrigger className="-ml-1" />
-        <TeamSwitcher teams={data.teams} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              className="data-[slot=sidebar-menu-button]:!p-1.5"
+            >
+              <a href="#">
+                <LogoIcon className="size-5" />
+                <span className="text-base font-semibold">Axiom</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <SidebarMenu>
+          <SidebarMenuItem className="flex items-center gap-2">
+            <SidebarMenuButton
+              tooltip="Quick Create"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
+              onClick={onNewConversation}
+            >
+              <CirclePlus />
+              <span>Quick Create</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        {state === "expanded" && <SearchForm />}
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        {state === "expanded" && (
+          <ChatHistory
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            onSelect={onConversationSelect}
+            onNewConversation={onNewConversation}
+            onRename={onRename}
+            onDelete={onDelete}
+            onArchive={onArchive}
+            onUnarchive={onUnarchive}
+          />
+        )}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={mockUser} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

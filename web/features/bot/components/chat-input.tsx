@@ -5,6 +5,7 @@ import {
   AttachmentPreview,
   AttachmentRemove,
   Attachments,
+  type AttachmentData,
 } from "@/components/ai-elements/attachments";
 import {
   ModelSelector,
@@ -34,10 +35,8 @@ import {
   PromptInputTextarea,
   PromptInputTools,
   usePromptInputAttachments,
-  usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
-import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
+import type { ChatStatus } from "@/features/bot/types";
 import { CheckIcon, GlobeIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -79,8 +78,10 @@ const models = [
   },
 ];
 
-const SUBMITTING_TIMEOUT = 200;
-const STREAMING_TIMEOUT = 2000;
+interface ChatInputProps {
+  onSubmit: (message: { text: string; files?: AttachmentData[] }) => void;
+  status: ChatStatus;
+}
 
 const PromptInputAttachmentsDisplay = () => {
   const attachments = usePromptInputAttachments();
@@ -105,12 +106,9 @@ const PromptInputAttachmentsDisplay = () => {
   );
 };
 
-const ChatInput = () => {
+const ChatInput = ({ onSubmit, status }: ChatInputProps) => {
   const [model, setModel] = useState<string>(models[0].id);
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
-  const [status, setStatus] = useState<
-    "submitted" | "streaming" | "ready" | "error"
-  >("ready");
 
   const selectedModelData = models.find((m) => m.id === model);
 
@@ -122,18 +120,10 @@ const ChatInput = () => {
       return;
     }
 
-    setStatus("submitted");
-
-    // eslint-disable-next-line no-console
-    console.log("Submitting message:", message);
-
-    setTimeout(() => {
-      setStatus("streaming");
-    }, SUBMITTING_TIMEOUT);
-
-    setTimeout(() => {
-      setStatus("ready");
-    }, STREAMING_TIMEOUT);
+    onSubmit({
+      text: message.text,
+      files: message.files,
+    });
   };
 
   return (

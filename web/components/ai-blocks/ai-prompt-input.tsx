@@ -70,17 +70,6 @@ const mockPages = [
   { id: "new-feature", name: "New Feature Plan", icon: "✨" },
 ];
 
-const models = [
-  { value: "claude-sonnet-4-preview", label: "Claude Sonnet 4 (Preview)" },
-  { value: "claude-sonnet-3.7", label: "Claude Sonnet 3.7" },
-  { value: "claude-sonnet-3.5", label: "Claude Sonnet 3.5" },
-  { value: "gemini-2.5-pro-preview", label: "Gemini 2.5 pro (Preview)" },
-  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-  { value: "gpt-4", label: "GPT-4" },
-  { value: "gpt-4o", label: "GPT-4o" },
-  { value: "gpt-o4-mini", label: "o4-mini (Preview)" },
-];
-
 const agentModes = [
   { value: "auto", label: "Auto" },
   { value: "agent", label: "Agent" },
@@ -549,7 +538,6 @@ export default function AIPromptInput({
   autoFocus = false,
 }: AIPromptInputProps) {
   const [input, setInput] = useState("");
-  const [model, setModel] = useState("gpt-3.5-turbo");
   const [agentMode, setAgentMode] = useState("auto");
   const [contextOptions, setContextOptions] = useState<string[]>([]);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);

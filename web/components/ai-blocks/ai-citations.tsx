@@ -210,7 +210,6 @@ interface SourcePreviewProps {
 
 function SourcePreview({
   source,
-  citationNumber,
   onSourceClick,
 }: SourcePreviewProps) {
   const [isSnippetOpen, setIsSnippetOpen] = useState(false);
@@ -311,7 +310,6 @@ interface CitationItemHeaderProps {
 function CitationItemHeader({
   citation,
   isOpen,
-  onToggle,
 }: CitationItemHeaderProps) {
   const hasMultipleSources = citation.sources.length > 1;
   const sourceCount = citation.sources.length;
@@ -394,10 +392,6 @@ function CitationItem({
   const [isOpen, setIsOpen] = useState(defaultExpanded);
   const hasMultipleSources = citation.sources.length > 1;
 
-  const handleToggle = useCallback(() => {
-    setIsOpen((prev) => !prev);
-  }, []);
-
   if (citation.sources.length === 0) {
     return null;
   }
@@ -408,7 +402,6 @@ function CitationItem({
         <CitationItemHeader
           citation={citation}
           isOpen={isOpen}
-          onToggle={handleToggle}
         />
 
         {hasMultipleSources ? (

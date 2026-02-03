@@ -1,6 +1,7 @@
 "use client"
 
-import { ChevronRight, type LucideIcon } from "lucide-react"
+import { ChevronRight } from "lucide-react"
+import type { BotNavItem } from "@/features/bot/types"
 
 import {
   Collapsible,
@@ -21,16 +22,7 @@ import {
 export function NavMain({
   items,
 }: {
-  items: {
-    title: string
-    url: string
-    icon?: LucideIcon
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-    }[]
-  }[]
+  items: BotNavItem[]
 }) {
   return (
     <SidebarGroup>

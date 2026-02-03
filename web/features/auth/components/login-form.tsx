@@ -30,7 +30,7 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const searchParams = useSearchParams();
+  useSearchParams();
   const { login } = useAuth(); // 使用 useAuth 中的 login
 
   const [step, setStep] = React.useState<"phone" | "otp">("phone");
@@ -103,8 +103,8 @@ export function LoginForm({
     try {
       // 使用 useAuth 的 login 方法，它会处理 token 保存、用户信息获取和跳转
       await login({ phone, code: otpValue });
-    } catch (error) {
-       // useAuth 已处理 toast error
+    } catch {
+      // useAuth 已处理 toast error
     } finally {
       setIsLoading(false);
     }

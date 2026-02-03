@@ -72,6 +72,7 @@ const TokenSpan = ({ token }: { token: ThemedToken }) => (
         textDecoration: isUnderline(token.fontStyle) ? "underline" : undefined,
       } as CSSProperties
     }
+    suppressHydrationWarning
   >
     {token.content}
   </span>
@@ -274,6 +275,7 @@ const CodeBlockBody = memo(
           className
         )}
         style={preStyle}
+        suppressHydrationWarning
       >
         <code
           className={cn(

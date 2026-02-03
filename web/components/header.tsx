@@ -1,7 +1,7 @@
 "use client";
 import { useScroll } from "@/hooks/use-scroll";
 import { Logo } from "@/components/logo";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MobileNav } from "@/components/mobile-nav";
 import { ModeToggle } from "@/components/mode-toggle";
