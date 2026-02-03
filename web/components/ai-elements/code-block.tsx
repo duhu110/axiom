@@ -129,9 +129,10 @@ const tokensCache = new Map<string, TokenizedCode>();
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
 
 const getTokensCacheKey = (code: string, language: BundledLanguage) => {
-  const start = code.slice(0, 100);
-  const end = code.length > 100 ? code.slice(-100) : "";
-  return `${language}:${code.length}:${start}:${end}`;
+  const safeCode = code || "";
+  const start = safeCode.slice(0, 100);
+  const end = safeCode.length > 100 ? safeCode.slice(-100) : "";
+  return `${language}:${safeCode.length}:${start}:${end}`;
 };
 
 const getHighlighter = (
@@ -153,7 +154,7 @@ const getHighlighter = (
 
 // Create raw tokens for immediate display while highlighting loads
 const createRawTokens = (code: string): TokenizedCode => ({
-  tokens: code.split("\n").map((line) =>
+  tokens: (code || "").split("\n").map((line) =>
     line === ""
       ? []
       : [
@@ -195,7 +196,7 @@ export function highlightCode(
       const availableLangs = highlighter.getLoadedLanguages();
       const langToUse = availableLangs.includes(language) ? language : "text";
 
-      const result = highlighter.codeToTokens(code, {
+      const result = highlighter.codeToTokens(code || "", {
         lang: langToUse,
         themes: {
           light: "github-light",

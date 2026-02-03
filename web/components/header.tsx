@@ -21,7 +21,11 @@ export const navLinks = [
 	},
 ];
 
-export function Header() {
+export interface HeaderProps {
+	leading?: React.ReactNode;
+}
+
+export function Header({ leading }: HeaderProps) {
 	const scrolled = useScroll(10);
 
 	return (
@@ -42,9 +46,12 @@ export function Header() {
 					}
 				)}
 			>
-				<a className="rounded-md p-2 hover:bg-accent" href="#">
-					<Logo className="h-4.5" />
-				</a>
+				<div className="flex items-center gap-2">
+					{leading}
+					<a className="rounded-md p-2 hover:bg-accent" href="#">
+						<Logo className="h-4.5" />
+					</a>
+				</div>
 				<div className="flex items-center gap-2">
 					<div className="hidden items-center gap-1 md:flex">
 						{navLinks.map((link, i) => (

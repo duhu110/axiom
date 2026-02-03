@@ -1,8 +1,7 @@
-import { AppSidebar } from "@/features/ttt/app-sidebar"
+import { AppSidebar } from "@/features/chat-test/app-sidebar"
 import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 
 
