@@ -260,7 +260,19 @@ export function ChartAreaInteractive() {
               content={
                 <ChartTooltipContent
                   labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-US", {
+                    if (value === undefined || value === null) {
+                      return ""
+                    }
+                    const dateValue =
+                      value instanceof Date
+                        ? value
+                        : typeof value === "string" || typeof value === "number"
+                          ? new Date(value)
+                          : null
+                    if (!dateValue) {
+                      return ""
+                    }
+                    return dateValue.toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                     })

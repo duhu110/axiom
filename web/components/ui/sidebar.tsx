@@ -152,6 +152,9 @@ function Sidebar({
   side = "left",
   variant = "sidebar",
   collapsible = "offcanvas",
+  autoCollapse = false,
+  autoCollapseDelay = 300,
+  autoExpandOnHover = true,
   className,
   children,
   dir,
@@ -160,8 +163,51 @@ function Sidebar({
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
+  autoCollapse?: boolean
+  autoCollapseDelay?: number
+  autoExpandOnHover?: boolean
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile, setOpen, open } = useSidebar()
+  const collapseTimeoutRef = React.useRef<number | null>(null)
+  const shouldAutoCollapse = autoCollapse && collapsible === "icon" && !isMobile
+
+  /**
+   * 清理折叠计时器，避免重复触发。
+   */
+  const clearCollapseTimeout = React.useCallback(() => {
+    if (collapseTimeoutRef.current !== null) {
+      window.clearTimeout(collapseTimeoutRef.current)
+      collapseTimeoutRef.current = null
+    }
+  }, [])
+
+  /**
+   * 鼠标进入侧边栏时自动展开。
+   */
+  const handleMouseEnter = React.useCallback(() => {
+    if (!shouldAutoCollapse) return
+    clearCollapseTimeout()
+    if (autoExpandOnHover && !open) {
+      setOpen(true)
+    }
+  }, [shouldAutoCollapse, clearCollapseTimeout, autoExpandOnHover, open, setOpen])
+
+  /**
+   * 鼠标离开侧边栏时自动折叠。
+   */
+  const handleMouseLeave = React.useCallback(() => {
+    if (!shouldAutoCollapse) return
+    clearCollapseTimeout()
+    collapseTimeoutRef.current = window.setTimeout(() => {
+      setOpen(false)
+    }, autoCollapseDelay)
+  }, [shouldAutoCollapse, clearCollapseTimeout, setOpen, autoCollapseDelay])
+
+  React.useEffect(() => {
+    return () => {
+      clearCollapseTimeout()
+    }
+  }, [clearCollapseTimeout])
 
   if (collapsible === "none") {
     return (
@@ -212,6 +258,8 @@ function Sidebar({
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div

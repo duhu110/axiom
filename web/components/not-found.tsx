@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/empty";
 import { Compass, Home } from "lucide-react";
 
+/**
+ * 404 空页面展示。
+ */
 export function NotFoundPage() {
 	return (
 		<div className="flex w-full items-center justify-center">
@@ -20,8 +23,8 @@ export function NotFoundPage() {
 								404
 							</EmptyTitle>
 							<EmptyDescription className="text-nowrap">
-								The page you're looking for might have been <br />
-								moved or doesn't exist.
+								The page you&apos;re looking for might have been <br />
+								moved or doesn&apos;t exist.
 							</EmptyDescription>
 						</EmptyHeader>
 						<EmptyContent>

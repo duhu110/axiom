@@ -150,6 +150,11 @@ export function PromptInputProvider({
   >([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openRef = useRef<() => void>(() => undefined);
+  const filesRef = useRef(attachmentFiles);
+
+  useEffect(() => {
+    filesRef.current = attachmentFiles;
+  }, [attachmentFiles]);
 
   const add = useCallback((files: File[] | FileList) => {
     const incoming = Array.from(files);

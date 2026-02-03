@@ -10,15 +10,17 @@ const deepseek = createDeepSeek({
     apiKey: process.env.DEEPSEEK_API_KEY ?? '',
 });
 
+/**
+ * 处理聊天请求并返回流式 UI 消息响应。
+ */
 export async function POST(req: Request) {
     const { messages }: { messages: UIMessage[] } = await req.json();
 
-    // @ts-expect-error maxSteps is supported but type definition might be missing
     const result = streamText({
         model: deepseek("deepseek-chat"),
         system: "You are a helpful assistant. When a tool is called, you must interpret the tool's output and provide a natural language response to the user. Do not stop after calling a tool.",
         messages: await convertToModelMessages(messages),
-        maxSteps: 10,
+        stopWhen: stepCountIs(10),
         tools: {
             weather: tool({
                 description: 'Get the weather in a location (fahrenheit)',

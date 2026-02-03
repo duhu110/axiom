@@ -9,13 +9,31 @@ import { ChatInputArea } from '@/features/chat-test/components/chat-input-area';
 import { ChatMessageList } from '@/features/chat-test/components/chat-message-list';
 
 
-export default function page() {
+/**
+ * Chat Test 页面容器与交互逻辑。
+ */
+export default function Page() {
 
     const [input, setInput] = useState('');
     const [webSearch, setWebSearch] = useState(false);
-    const [isAtBottom, setIsAtBottom] = useState(true);
-    const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+
+    /**
+     * 计算当前是否接近页面底部。
+     */
+    const getNearBottom = useCallback(() => {
+        if (typeof window === 'undefined') {
+            return true;
+        }
+        const threshold = 100;
+        const scrollPosition = window.scrollY + window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        return scrollPosition >= documentHeight - threshold;
+    }, []);
+
+    const [isAtBottom, setIsAtBottom] = useState(getNearBottom);
+    const [autoScrollEnabled, setAutoScrollEnabled] = useState(getNearBottom);
     const { messages, sendMessage, status, regenerate } = useChat({
+        // @ts-expect-error maxSteps is supported in newer versions but types might be outdated
         maxSteps: 5,
     });
 
@@ -29,19 +47,10 @@ export default function page() {
     }, []);
 
     const handleWindowScroll = useCallback(() => {
-        const threshold = 100;
-        const scrollPosition = window.scrollY + window.innerHeight;
-        const documentHeight = document.documentElement.scrollHeight;
-        const nearBottom = scrollPosition >= documentHeight - threshold;
-
+        const nearBottom = getNearBottom();
         setIsAtBottom(nearBottom);
-
-        if (nearBottom) {
-            setAutoScrollEnabled(true);
-        } else {
-            setAutoScrollEnabled(false);
-        }
-    }, []);
+        setAutoScrollEnabled(nearBottom);
+    }, [getNearBottom]);
 
     const handleSubmit = (message: PromptInputMessage) => {
         const hasText = Boolean(message.text);
@@ -87,8 +96,6 @@ export default function page() {
     useEffect(() => {
         window.addEventListener('scroll', handleWindowScroll, { passive: true });
         window.addEventListener('resize', handleWindowScroll);
-        // 初始检查
-        handleWindowScroll();
         return () => {
             window.removeEventListener('scroll', handleWindowScroll);
             window.removeEventListener('resize', handleWindowScroll);
