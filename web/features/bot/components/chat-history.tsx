@@ -23,13 +23,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -607,9 +601,27 @@ export default function ChatHistory({
     return (
         <>
             <CardContent
-                className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto overscroll-contain px-2"
+                className={cn(
+                    "flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto overscroll-contain px-2",
+                    className
+                )}
                 ref={containerRef}
             >
+                {showSearch && (
+                    <div className="sticky top-0 z-10 bg-background pb-2">
+                        <InputGroup>
+                            <InputGroupAddon>
+                                <Search className="size-4" />
+                            </InputGroupAddon>
+                            <InputGroupInput
+                                aria-label="Search conversations"
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search conversations"
+                                value={searchQuery}
+                            />
+                        </InputGroup>
+                    </div>
+                )}
                 {filteredConversations.length === 0 ? (
                     <EmptyState
                         onNewConversation={onNewConversation}

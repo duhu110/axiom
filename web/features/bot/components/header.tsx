@@ -44,6 +44,7 @@ export function Header({ leading }: HeaderProps) {
 				)}
 			>
 				<div className="flex items-center gap-4">
+					{leading}
 					<a className="rounded-md p-2 hover:bg-accent" href="#">
 						<Logo className="h-7" />
 					</a>
