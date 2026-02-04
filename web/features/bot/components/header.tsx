@@ -1,15 +1,15 @@
 "use client";
 import { useScroll } from "@/hooks/use-scroll";
-import { Logo } from "@/features/bot/components/logo";
+import { Logo } from "@/components/logo";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MobileNav } from "@/components/mobile-nav";
+import { MobileNav } from "@/features/bot/components/mobile-nav";
 import { ModeToggle } from "@/components/mode-toggle";
 import type { HeaderProps, NavLink } from "@/features/bot/types";
 
 export const navLinks: NavLink[] = [
 	{
-		label: "Features",
+		label: "知识库",
 		href: "#",
 	},
 	{

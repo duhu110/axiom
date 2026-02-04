@@ -30,6 +30,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import type { BotUser } from "@/features/bot/types"
+import { useState } from "react"
+import { BillingDialog } from "./billing-dialog"
 
 export function NavUser({
   user,
@@ -37,6 +39,7 @@ export function NavUser({
   user: BotUser
 }) {
   const { isMobile } = useSidebar()
+  const [billingOpen, setBillingOpen] = useState(false)
 
   return (
     <SidebarMenu>
@@ -89,9 +92,9 @@ export function NavUser({
                 <BadgeCheck />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setBillingOpen(true)}>
                 <CreditCard />
-                Billing
+                TOKEN用量
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />
@@ -106,6 +109,7 @@ export function NavUser({
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+      <BillingDialog open={billingOpen} onOpenChange={setBillingOpen} />
     </SidebarMenu>
   )
 }

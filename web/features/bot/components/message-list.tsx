@@ -145,22 +145,23 @@ function ToolMessageItem({ message }: ToolMessageItemProps) {
   if (message.data.type !== "tool") return null;
 
   const { tool } = message.data;
-  const toolName = "toolName" in tool ? tool.toolName : "tool";
+  const toolName = "toolName" in tool ? (tool.toolName as string) : "tool";
   const toolState = tool.state;
   const toolInput = "args" in tool ? tool.args : {};
-  const toolOutput = "result" in tool ? tool.result : undefined;
+  const toolOutput = "output" in tool ? tool.output : undefined;
+  const toolType = tool.type;
 
   return (
     <Message from={message.from}>
-      <Tool defaultOpen={toolState === "result"}>
+      <Tool defaultOpen={toolState === "output-available"}>
         <ToolHeader
-          state={toolState === "result" ? "output-available" : "input-available"}
+          state={toolState}
           title={toolName}
-          type={`tool-${toolName}`}
+          type={toolType}
         />
         <ToolContent>
           <ToolInput input={toolInput} />
-          {toolState === "result" && (
+          {toolState === "output-available" && (
             <ToolOutput
               output={typeof toolOutput === "string" ? toolOutput : JSON.stringify(toolOutput, null, 2)}
               errorText={undefined}

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { CirclePlus } from "lucide-react"
-import { LogoIcon } from "@/features/bot/components/logo"
+import { LogoIcon } from "@/components/logo"
 import { NavUser } from "@/features/bot/components/nav-user"
 import {
   Sidebar,

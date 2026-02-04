@@ -1,10 +1,11 @@
-import { useMediaQuery } from "@/hooks/use-media-query";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { MenuIcon, XIcon } from "lucide-react";
 import React from "react";
 import { createPortal } from "react-dom";
-import { navLinks } from "@/components/header";
+import { cn } from "@/lib/utils";
+import { MenuIcon, XIcon } from "lucide-react";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { navLinks } from "../data";
+
 
 export function MobileNav() {
 	const [open, setOpen] = React.useState(false);

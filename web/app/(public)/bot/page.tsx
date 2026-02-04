@@ -144,8 +144,9 @@ export default function Page() {
             <MessageList messages={messages} onRetry={handleRetry} />
           </div>
         </div>
-        <div className="sticky bottom-6 mt-auto flex w-full justify-center">
-          <div className="relative w-full max-w-[68rem] rounded-xl bg-background/90 px-3 py-2 sm:px-4">
+        <div className="sticky bottom-6 mt-auto flex w-full justify-center relative">
+          <div className="pointer-events-none absolute inset-x-0 -bottom-6 h-6 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/40" />
+          <div className="relative z-10 w-full max-w-[68rem] rounded-xl bg-background/90 px-3 py-2 sm:px-4">
             {showScrollToBottom && (
               <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-8">
                 <Button
