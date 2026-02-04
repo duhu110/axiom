@@ -14,6 +14,8 @@ from .utils import convert_to_vercel_sse
 from .schemas import ChatMessage
 from .tools import get_current_weather, upsert_memory
 from .dependencies import get_checkpointer, get_store
+from llm_usage.service import record_usage_from_response
+from services.logging_service import logger
 
 
 # DeepSeek API 配置
@@ -26,14 +28,24 @@ DEEPSEEK_THINK_MODEL="deepseek-reasoner"
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
 
+class DeepSeekReasonerChatOpenAI(ChatOpenAI):
+    def _get_request_payload(self, input_, *, stop=None, **kwargs):
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        messages = payload.get("messages", [])
+        for message in messages:
+            if message.get("role") == "assistant" and "reasoning_content" not in message:
+                message["reasoning_content"] = ""
+        return payload
+
+
 class AgentService:
     def __init__(self):
         # 初始化 LLM
         # 使用 DeepSeek 配置
-        self.llm = ChatOpenAI(
-            model=DEEPSEEK_MODEL,
+        self.llm = DeepSeekReasonerChatOpenAI(
+            model=DEEPSEEK_THINK_MODEL,
             api_key=DEEPSEEK_API_KEY,
-            base_url=DEEPSEEK_BASE_URL
+            base_url=DEEPSEEK_BASE_URL,
         )
         
         # 绑定工具
@@ -105,8 +117,60 @@ You can use the `upsert_memory` tool to save new important information about the
         
         # 简单策略：总是将 System Message 放在最前面
         input_messages = [SystemMessage(content=system_msg)] + messages
-        
+
+        # DeepSeek reasoner 要求 assistant message 带 reasoning_content
+        # 这里补齐历史消息中的 reasoning_content，避免 400 报错
+        for idx, msg in enumerate(input_messages):
+            if isinstance(msg, AIMessage):
+                if "reasoning_content" not in msg.additional_kwargs:
+                    msg.additional_kwargs["reasoning_content"] = ""
+                if "reasoning_content" not in msg.response_metadata:
+                    msg.response_metadata["reasoning_content"] = ""
+                logger.info(
+                    f"Reasoner patch AIMessage idx={idx} has_reasoning_content={'reasoning_content' in msg.additional_kwargs}"
+                )
+            elif isinstance(msg, dict):
+                role = msg.get("role") or msg.get("type")
+                if role in ("assistant", "ai") and "reasoning_content" not in msg:
+                    msg["reasoning_content"] = ""
+                logger.info(
+                    f"Reasoner patch dict idx={idx} role={role} has_reasoning_content={'reasoning_content' in msg}"
+                )
+            else:
+                role = getattr(msg, "type", None)
+                logger.info(
+                    f"Reasoner patch msg idx={idx} type={type(msg).__name__} role={role}"
+                )
+
         response = await self.llm_with_tools.ainvoke(input_messages)
+
+        # 调试日志：查看模型响应与用量元数据
+        try:
+            usage_metadata = getattr(response, "usage_metadata", None)
+            response_metadata = getattr(response, "response_metadata", None)
+            logger.info(f"LLM response usage_metadata: {usage_metadata}")
+            logger.info(f"LLM response response_metadata keys: {list(response_metadata.keys()) if isinstance(response_metadata, dict) else None}")
+            if isinstance(response_metadata, dict):
+                logger.info(f"LLM response usage in response_metadata: {response_metadata.get('usage')}")
+        except Exception as exc:
+            logger.warning(f"log response metadata failed: {exc}")
+
+        # 记录 LLM 用量
+        try:
+            metadata = config.get("metadata", {})
+            user_id = metadata.get("user_id")
+            model_name = getattr(self.llm, "model_name", None) or getattr(self.llm, "model", "unknown")
+            if user_id:
+                logger.info(f"Recording LLM usage for user_id={user_id}, model={model_name}")
+                await record_usage_from_response(
+                    user_id=user_id,
+                    response=response,
+                    model_name=model_name,
+                )
+                logger.info("LLM usage record saved")
+        except Exception as exc:
+            logger.warning(f"record_usage failed: {exc}")
+
         return {"messages": [response]}
 
     async def chat(self, query: str, history: List[ChatMessage], session_id: str = "default"):
@@ -142,6 +206,12 @@ You can use the `upsert_memory` tool to save new important information about the
             config=config,
             version="v2"
         ):
+            try:
+                logger.info(
+                    f"Agent event: {event.get('event')} name={event.get('name')} keys={list(event.keys())}"
+                )
+            except Exception as exc:
+                logger.warning(f"log agent event failed: {exc}")
             chunk = convert_to_vercel_sse(event)
             if chunk:
                 yield chunk

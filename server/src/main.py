@@ -13,6 +13,7 @@ from auth.router import router as auth_router
 from rustfs.router import router as rustfs_router
 from agent.router import router as agent_router
 from knowledgebase.router import router as kb_router
+from llm_usage.router import router as llm_usage_router
 from agent.dependencies import init_agent_dependencies, close_agent_dependencies
 from rustfs.client import get_rustfs_client
 
@@ -62,6 +63,7 @@ app.include_router(auth_router)
 app.include_router(rustfs_router)
 app.include_router(agent_router, prefix="/agent", tags=["agent"])
 app.include_router(kb_router)
+app.include_router(llm_usage_router)
 
 
 @app.get("/docs", include_in_schema=False)

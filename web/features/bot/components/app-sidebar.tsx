@@ -19,8 +19,6 @@ import {
 import { mockUser } from "@/app/(public)/bot/mock-data"
 
 import ChatHistory from "@/features/bot/components/chat-history"
-import { SearchForm } from "@/features/bot/components/search-form"
-
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import type { Conversation } from "@/features/bot/types"
 
@@ -80,7 +78,6 @@ export function AppSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        {state === "expanded" && <SearchForm />}
       </SidebarHeader>
       <SidebarContent>
         {state === "expanded" && (

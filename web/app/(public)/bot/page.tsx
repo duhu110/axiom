@@ -6,16 +6,48 @@ import { Header } from "@/features/bot/components/header";
 import ChatInput from "@/features/bot/components/chat-input";
 import MessageList from "@/features/bot/components/message-list";
 import { mockConversations, mockMessages } from "./mock-data";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { BotMessage, ChatStatus, Conversation } from "@/features/bot/types";
 import { nanoid } from "nanoid";
 import type { AttachmentData } from "@/components/ai-elements/attachments";
+import { Button } from "@/components/ui/button";
+import { ArrowDown } from "lucide-react";
 
 export default function Page() {
   const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
   const [activeConversationId, setActiveConversationId] = useState<string>("conv-1");
   const [messages, setMessages] = useState<BotMessage[]>(mockMessages);
   const [chatStatus, setChatStatus] = useState<ChatStatus>("ready");
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  useEffect(() => {
+    const updateScrollState = () => {
+      const distance =
+        document.documentElement.scrollHeight -
+        window.scrollY -
+        window.innerHeight;
+      setShowScrollToBottom(distance > 120);
+    };
+
+    updateScrollState();
+    window.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+    return () => {
+      window.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      const distance =
+        document.documentElement.scrollHeight -
+        window.scrollY -
+        window.innerHeight;
+      setShowScrollToBottom(distance > 120);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [messages.length]);
 
   const handleSubmit = (message: { text: string; files?: AttachmentData[] }) => {
     if (!message.text && (!message.files || message.files.length === 0)) {
@@ -34,20 +66,6 @@ export default function Page() {
     };
 
     setMessages((prev) => [...prev, newMessage]);
-
-    // 更新会话的最后消息
-    setConversations((prev) =>
-      prev.map((conv) =>
-        conv.id === activeConversationId
-          ? {
-              ...conv,
-              lastMessage: message.text,
-              lastMessageAt: new Date(),
-              messageCount: (conv.messageCount || 0) + 1,
-            }
-          : conv
-      )
-    );
 
     setChatStatus("submitted");
 
@@ -81,9 +99,6 @@ export default function Page() {
     const newConv: Conversation = {
       id: nanoid(),
       title: "New Chat",
-      lastMessageAt: new Date(),
-      messageCount: 0,
-      isActive: false,
     };
     setConversations((prev) => [newConv, ...prev]);
     setActiveConversationId(newConv.id);
@@ -108,22 +123,6 @@ export default function Page() {
     }
   };
 
-  const handleArchive = async (conversationId: string) => {
-    setConversations((prev) =>
-      prev.map((conv) =>
-        conv.id === conversationId ? { ...conv, isArchived: true } : conv
-      )
-    );
-  };
-
-  const handleUnarchive = async (conversationId: string) => {
-    setConversations((prev) =>
-      prev.map((conv) =>
-        conv.id === conversationId ? { ...conv, isArchived: false } : conv
-      )
-    );
-  };
-
   const handleRetry = (messageKey: string) => {
     console.log("Retrying message:", messageKey);
   };
@@ -137,18 +136,34 @@ export default function Page() {
         onNewConversation={handleNewConversation}
         onRename={handleRename}
         onDelete={handleDelete}
-        onArchive={handleArchive}
-        onUnarchive={handleUnarchive}
       />
       <SidebarInset>
         <Header />
-        <div className="bottom-6 mt-auto flex justify-center w-full pb-20">
-          <div className="w-full md:w-2/3 lg:w-3/4 px-3 py-2">
+        <div className="bottom-6 mt-auto flex w-full justify-center pb-20">
+          <div className="w-full max-w-[68rem] px-3 py-2 sm:px-4">
             <MessageList messages={messages} onRetry={handleRetry} />
           </div>
         </div>
-        <div className="sticky bottom-6 mt-auto flex justify-center w-full">
-          <div className="w-full md:w-2/3 lg:w-3/4 bg-background/80 backdrop-blur rounded-xl px-3 py-2">
+        <div className="sticky bottom-6 mt-auto flex w-full justify-center">
+          <div className="relative w-full max-w-[68rem] rounded-xl bg-background/90 px-3 py-2 sm:px-4">
+            {showScrollToBottom && (
+              <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-8">
+                <Button
+                  className="h-8 w-8 rounded-full p-0"
+                  onClick={() =>
+                    window.scrollTo({
+                      top: document.documentElement.scrollHeight,
+                      behavior: "smooth",
+                    })
+                  }
+                  type="button"
+                  variant="secondary"
+                  aria-label="Scroll to bottom"
+                >
+                  <ArrowDown className="size-3.5" />
+                </Button>
+              </div>
+            )}
             <ChatInput onSubmit={handleSubmit} status={chatStatus} />
           </div>
         </div>

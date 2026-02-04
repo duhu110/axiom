@@ -3,7 +3,6 @@
 import {
     Archive,
     Loader2,
-    MessageSquare,
     MoreVertical,
     Pencil,
     Plus,
@@ -36,17 +35,7 @@ import {
     InputGroupAddon,
     InputGroupInput,
 } from "@/components/ui/input-group";
-import { Separator } from "@/components/ui/separator";
-
-export interface Conversation {
-    id: string;
-    title: string;
-    lastMessage?: string;
-    lastMessageAt?: Date;
-    messageCount?: number;
-    isArchived?: boolean;
-    isActive?: boolean;
-}
+import type { Conversation } from "@/features/bot/types";
 
 export interface AIChatHistoryProps {
     conversations: Conversation[];
@@ -60,86 +49,6 @@ export interface AIChatHistoryProps {
     className?: string;
     showSearch?: boolean;
     showNewButton?: boolean;
-}
-
-function formatDate(date: Date): string {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const thisWeek = new Date(today);
-    thisWeek.setDate(thisWeek.getDate() - 7);
-
-    const dateOnly = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate()
-    );
-
-    if (dateOnly.getTime() === today.getTime()) {
-        return "Today";
-    }
-    if (dateOnly.getTime() === yesterday.getTime()) {
-        return "Yesterday";
-    }
-    if (dateOnly.getTime() >= thisWeek.getTime()) {
-        return "This Week";
-    }
-
-    const month = date.toLocaleString("en-US", { month: "short" });
-    const day = date.getDate();
-    const year = date.getFullYear();
-    const currentYear = now.getFullYear();
-
-    if (year === currentYear) {
-        return `${month} ${day}`;
-    }
-    return `${month} ${day}, ${year}`;
-}
-
-function groupConversationsByDate(conversations: Conversation[]): {
-    label: string;
-    conversations: Conversation[];
-}[] {
-    const groups: Record<string, Conversation[]> = {};
-
-    conversations.forEach((conv) => {
-        if (!conv.lastMessageAt) {
-            if (!groups["Older"]) {
-                groups["Older"] = [];
-            }
-            groups["Older"].push(conv);
-            return;
-        }
-
-        const label = formatDate(conv.lastMessageAt);
-        if (!groups[label]) {
-            groups[label] = [];
-        }
-        groups[label].push(conv);
-    });
-
-    const orderedLabels = ["Today", "Yesterday", "This Week"];
-    const result: { label: string; conversations: Conversation[] }[] = [];
-
-    orderedLabels.forEach((label) => {
-        if (groups[label]) {
-            result.push({ label, conversations: groups[label] });
-            delete groups[label];
-        }
-    });
-
-    Object.keys(groups)
-        .sort()
-        .forEach((label) => {
-            result.push({ label, conversations: groups[label] });
-        });
-
-    if (groups["Older"]) {
-        result.push({ label: "Older", conversations: groups["Older"] });
-    }
-
-    return result;
 }
 
 interface EmptyStateProps {
@@ -156,7 +65,7 @@ function EmptyState({
     return (
         <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-                <MessageSquare className="size-6 text-muted-foreground" />
+                <Search className="size-6 text-muted-foreground" />
             </div>
             <div className="flex flex-col gap-2">
                 <p className="font-medium text-sm">
@@ -244,143 +153,110 @@ function ConversationItem({
         <>
             <div
                 className={cn(
-                    "group relative flex flex-col gap-2 rounded-lg border p-3 transition-colors",
-                    "min-h-[60px] touch-manipulation [-webkit-tap-highlight-color:transparent]",
+                    "group relative flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors",
+                    "min-h-[40px] touch-manipulation [-webkit-tap-highlight-color:transparent]",
                     isActive
-                        ? "border-primary bg-primary/5 shadow-xs"
-                        : "border-transparent bg-card focus-within:border-border focus-within:bg-muted/50 hover:border-border hover:bg-muted/50",
+                        ? "bg-primary/10 text-foreground"
+                        : "text-foreground/80 hover:bg-muted/40",
                     isLoading && "pointer-events-none opacity-50"
                 )}
                 role="listitem"
             >
-                <div className="flex items-start gap-3">
-                    <button
-                        aria-label={`Select conversation ${conversation.title}`}
-                        className="flex min-h-[44px] min-w-0 flex-1 flex-col gap-1 rounded-sm text-left [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-[24px]"
-                        disabled={isLoading}
-                        onClick={onSelect}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                onSelect();
-                            }
-                        }}
-                        type="button"
-                    >
-                        {isEditing ? (
-                            <input
-                                aria-label="Edit conversation title"
-                                className="min-h-[44px] w-full rounded-md border bg-background px-2 py-1.5 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 sm:min-h-[24px] sm:text-sm"
-                                onBlur={onRenameSubmit}
-                                onChange={(e) => onEditValueChange(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        onRenameSubmit();
-                                    } else if (e.key === "Escape") {
-                                        e.preventDefault();
-                                        onRenameCancel();
-                                    }
-                                }}
-                                ref={inputRef}
-                                value={editValue}
-                            />
-                        ) : (
-                            <>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <h4 className="wrap-break-word min-w-0 font-medium text-sm">
-                                        {conversation.title}
-                                    </h4>
-                                </div>
-                                {conversation.lastMessage && (
-                                    <p className="wrap-break-word line-clamp-2 min-w-0 text-muted-foreground text-xs">
-                                        {conversation.lastMessage}
-                                    </p>
-                                )}
-                                <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-                                    {conversation.lastMessageAt && (
-                                        <span className="whitespace-nowrap tabular-nums">
-                                            {formatDate(conversation.lastMessageAt)}
-                                        </span>
-                                    )}
-                                    {conversation.messageCount !== undefined && (
-                                        <>
-                                            <span aria-hidden="true" className="shrink-0">
-                                                •
-                                            </span>
-                                            <span className="whitespace-nowrap tabular-nums">
-                                                {conversation.messageCount} message
-                                                {conversation.messageCount !== 1 ? "s" : ""}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            </>
-                        )}
-                    </button>
-                    {!isEditing && (
-                        <div className="absolute top-2 right-2 z-10">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        aria-label={`More options for ${conversation.title}`}
-                                        className="min-h-[44px] min-w-[44px] shrink-0 opacity-0 transition-opacity [-webkit-tap-highlight-color:transparent] focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 sm:min-h-[24px] sm:min-w-[24px]"
+                <button
+                    aria-label={`Select conversation ${conversation.title}`}
+                    className="flex min-h-[36px] min-w-0 flex-1 items-center rounded-sm text-left text-sm [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                    disabled={isLoading}
+                    onClick={onSelect}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSelect();
+                        }
+                    }}
+                    type="button"
+                >
+                    {isEditing ? (
+                        <input
+                            aria-label="Edit conversation title"
+                            className="min-h-[36px] w-full rounded-md border bg-background px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                            onBlur={onRenameSubmit}
+                            onChange={(e) => onEditValueChange(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    onRenameSubmit();
+                                } else if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    onRenameCancel();
+                                }
+                            }}
+                            ref={inputRef}
+                            value={editValue}
+                        />
+                    ) : (
+                        <span className="block w-full truncate">{conversation.title}</span>
+                    )}
+                </button>
+                {!isEditing && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    aria-label={`More options for ${conversation.title}`}
+                                    className="min-h-[36px] min-w-[36px] shrink-0 opacity-0 transition-opacity [-webkit-tap-highlight-color:transparent] focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
+                                    disabled={isLoading}
+                                    size="icon"
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    <MoreVertical className="size-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {onRename && (
+                                    <DropdownMenuItem
                                         disabled={isLoading}
-                                        size="icon"
-                                        type="button"
-                                        variant="ghost"
+                                        onClick={onRenameStart}
                                     >
-                                        <MoreVertical className="size-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    {onRename && (
+                                        <Pencil className="size-4" />
+                                        Rename
+                                    </DropdownMenuItem>
+                                )}
+                                {onArchive && (
+                                    <DropdownMenuItem
+                                        disabled={isLoading}
+                                        onClick={() => onArchive(conversation.id)}
+                                    >
+                                        <Archive className="size-4" />
+                                        Archive
+                                    </DropdownMenuItem>
+                                )}
+                                {onUnarchive && (
+                                    <DropdownMenuItem
+                                        disabled={isLoading}
+                                        onClick={() => onUnarchive(conversation.id)}
+                                    >
+                                        <Archive className="size-4" />
+                                        Unarchive
+                                    </DropdownMenuItem>
+                                )}
+                                {onDelete && (
+                                    <>
+                                        <DropdownMenuSeparator />
                                         <DropdownMenuItem
                                             disabled={isLoading}
-                                            onClick={onRenameStart}
+                                            onClick={() => setShowDeleteDialog(true)}
+                                            variant="destructive"
                                         >
-                                            <Pencil className="size-4" />
-                                            Rename
+                                            <Trash2 className="size-4" />
+                                            Delete
                                         </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuSeparator />
-                                    {conversation.isArchived
-                                        ? onUnarchive && (
-                                            <DropdownMenuItem
-                                                disabled={isLoading}
-                                                onClick={() => onUnarchive(conversation.id)}
-                                            >
-                                                <Archive className="size-4" />
-                                                Unarchive
-                                            </DropdownMenuItem>
-                                        )
-                                        : onArchive && (
-                                            <DropdownMenuItem
-                                                disabled={isLoading}
-                                                onClick={() => onArchive(conversation.id)}
-                                            >
-                                                <Archive className="size-4" />
-                                                Archive
-                                            </DropdownMenuItem>
-                                        )}
-                                    {onDelete && (
-                                        <>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem
-                                                disabled={isLoading}
-                                                onClick={() => setShowDeleteDialog(true)}
-                                                variant="destructive"
-                                            >
-                                                <Trash2 className="size-4" />
-                                                Delete
-                                            </DropdownMenuItem>
-                                        </>
-                                    )}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
-                    )}
-                </div>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                )}
             </div>
 
             <AlertDialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
@@ -415,77 +291,7 @@ function ConversationItem({
     );
 }
 
-interface ConversationGroupProps {
-    label: string;
-    conversations: Conversation[];
-    activeConversationId?: string;
-    editingId: string | null;
-    editValue: string;
-    onSelect: (conversationId: string) => void;
-    onRenameStart: (conversation: Conversation) => void;
-    onRenameSubmit: (conversationId: string) => void;
-    onRenameCancel: () => void;
-    onEditValueChange: (value: string) => void;
-    onRename?: (conversationId: string, newTitle: string) => Promise<void>;
-    onDelete?: (conversationId: string) => Promise<void>;
-    onArchive?: (conversationId: string) => Promise<void>;
-    onUnarchive?: (conversationId: string) => Promise<void>;
-    isLoading?: Record<string, boolean>;
-}
-
-function ConversationGroup({
-    label,
-    conversations,
-    activeConversationId,
-    editingId,
-    editValue,
-    onSelect,
-    onRenameStart,
-    onRenameSubmit,
-    onRenameCancel,
-    onEditValueChange,
-    onRename,
-    onDelete,
-    onArchive,
-    onUnarchive,
-    isLoading = {},
-}: ConversationGroupProps) {
-    return (
-        <div>
-            <div className="sticky top-0 z-10 pb-2">
-                <h3 className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                    {label}
-                </h3>
-            </div>
-            <div className="flex flex-col gap-1" role="list">
-                {conversations.map((conversation) => {
-                    const isActive = conversation.id === activeConversationId;
-                    const isEditing = editingId === conversation.id;
-
-                    return (
-                        <ConversationItem
-                            conversation={conversation}
-                            editValue={editValue}
-                            isActive={isActive}
-                            isEditing={isEditing}
-                            isLoading={isLoading[conversation.id]}
-                            key={conversation.id}
-                            onArchive={onArchive}
-                            onDelete={onDelete}
-                            onEditValueChange={onEditValueChange}
-                            onRename={onRename}
-                            onRenameCancel={onRenameCancel}
-                            onRenameStart={() => onRenameStart(conversation)}
-                            onRenameSubmit={() => onRenameSubmit(conversation.id)}
-                            onSelect={() => onSelect(conversation.id)}
-                            onUnarchive={onUnarchive}
-                        />
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
+const PAGE_SIZE = 20;
 
 export default function ChatHistory({
     conversations,
@@ -506,23 +312,22 @@ export default function ChatHistory({
     const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
         {}
     );
+    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const filteredConversations = useMemo(() => {
         if (!searchQuery.trim()) return conversations;
 
         const query = searchQuery.toLowerCase().trim();
-        return conversations.filter(
-            (conv) =>
-                conv.title.toLowerCase().includes(query) ||
-                conv.lastMessage?.toLowerCase().includes(query)
-        );
+        return conversations.filter((conv) => conv.title.toLowerCase().includes(query));
     }, [conversations, searchQuery]);
 
-    const groupedConversations = useMemo(
-        () => groupConversationsByDate(filteredConversations),
-        [filteredConversations]
+    const visibleConversations = useMemo(
+        () => filteredConversations.slice(0, visibleCount),
+        [filteredConversations, visibleCount]
     );
+
+    const hasMore = visibleCount < filteredConversations.length;
 
     const handleRenameStart = useCallback((conversation: Conversation) => {
         setEditingId(conversation.id);
@@ -537,10 +342,7 @@ export default function ChatHistory({
             }
 
             const trimmedValue = editValue.trim();
-            if (
-                trimmedValue ===
-                conversations.find((c) => c.id === conversationId)?.title
-            ) {
+            if (trimmedValue === conversations.find((c) => c.id === conversationId)?.title) {
                 setEditingId(null);
                 return;
             }
@@ -566,6 +368,27 @@ export default function ChatHistory({
         setEditingId(null);
         setEditValue("");
     }, []);
+
+    useEffect(() => {
+        setVisibleCount(PAGE_SIZE);
+    }, [searchQuery, conversations.length]);
+
+    const handleScroll = useCallback(() => {
+        const node = containerRef.current;
+        if (!node || !hasMore) return;
+        const distance = node.scrollHeight - node.scrollTop - node.clientHeight;
+        if (distance < 160) {
+            setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredConversations.length));
+        }
+    }, [filteredConversations.length, hasMore]);
+
+    useEffect(() => {
+        const node = containerRef.current;
+        if (!node) return;
+        const listener = () => handleScroll();
+        node.addEventListener("scroll", listener, { passive: true });
+        return () => node.removeEventListener("scroll", listener);
+    }, [handleScroll]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -600,15 +423,9 @@ export default function ChatHistory({
 
     return (
         <>
-            <CardContent
-                className={cn(
-                    "flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto overscroll-contain px-2",
-                    className
-                )}
-                ref={containerRef}
-            >
+            <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
                 {showSearch && (
-                    <div className="sticky top-0 z-10 bg-background pb-2">
+                    <div className="px-2 pb-2">
                         <InputGroup>
                             <InputGroupAddon>
                                 <Search className="size-4" />
@@ -622,6 +439,10 @@ export default function ChatHistory({
                         </InputGroup>
                     </div>
                 )}
+                <CardContent
+                    className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-2"
+                    ref={containerRef}
+                >
                 {filteredConversations.length === 0 ? (
                     <EmptyState
                         onNewConversation={onNewConversation}
@@ -629,34 +450,40 @@ export default function ChatHistory({
                         showNewButton={showNewButton}
                     />
                 ) : (
-                    <div className="flex flex-col gap-4">
-                        {groupedConversations.map((group, groupIdx) => (
-                            <div key={group.label}>
-                                <ConversationGroup
-                                    activeConversationId={activeConversationId}
-                                    conversations={group.conversations}
-                                    editingId={editingId}
+                    <div className="flex flex-col gap-0.5" role="list">
+                        {visibleConversations.map((conversation) => {
+                            const isActive = conversation.id === activeConversationId;
+                            const isEditing = editingId === conversation.id;
+
+                            return (
+                                <ConversationItem
+                                    conversation={conversation}
                                     editValue={editValue}
-                                    isLoading={loadingStates}
-                                    label={group.label}
+                                    isActive={isActive}
+                                    isEditing={isEditing}
+                                    isLoading={loadingStates[conversation.id]}
+                                    key={conversation.id}
                                     onArchive={onArchive}
                                     onDelete={onDelete}
                                     onEditValueChange={setEditValue}
                                     onRename={onRename}
                                     onRenameCancel={handleRenameCancel}
-                                    onRenameStart={handleRenameStart}
-                                    onRenameSubmit={handleRenameSubmit}
-                                    onSelect={onSelect || (() => { })}
+                                    onRenameStart={() => handleRenameStart(conversation)}
+                                    onRenameSubmit={() => handleRenameSubmit(conversation.id)}
+                                    onSelect={() => onSelect?.(conversation.id)}
                                     onUnarchive={onUnarchive}
                                 />
-                                {groupIdx < groupedConversations.length - 1 && (
-                                    <Separator className="my-4" />
-                                )}
+                            );
+                        })}
+                        {hasMore && (
+                            <div className="py-2 text-center text-muted-foreground text-xs">
+                                加载更多…
                             </div>
-                        ))}
+                        )}
                     </div>
                 )}
-            </CardContent>
+                </CardContent>
+            </div>
         </>
     );
 }

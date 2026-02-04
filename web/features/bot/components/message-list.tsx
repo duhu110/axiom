@@ -28,12 +28,7 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 import type { BotMessage, TextMessageContent } from "@/features/bot/types";
-import {
-  CopyIcon,
-  RefreshCcwIcon,
-  ThumbsDownIcon,
-  ThumbsUpIcon,
-} from "lucide-react";
+import { CopyIcon, RefreshCcwIcon } from "lucide-react";
 import { useState } from "react";
 
 interface MessageListProps {
@@ -44,23 +39,17 @@ interface MessageListProps {
 interface TextMessageItemProps {
   message: BotMessage;
   data: TextMessageContent;
-  liked: boolean;
-  disliked: boolean;
-  onLike: () => void;
-  onDislike: () => void;
   onCopy: (content: string) => void;
   onRetry?: () => void;
+  isCopied?: boolean;
 }
 
 function TextMessageItem({
   message,
   data,
-  liked,
-  disliked,
-  onLike,
-  onDislike,
   onCopy,
   onRetry,
+  isCopied = false,
 }: TextMessageItemProps) {
   const hasMultipleVersions = data.versions && data.versions.length > 1;
 
@@ -91,29 +80,9 @@ function TextMessageItem({
                   <RefreshCcwIcon className="size-4" />
                 </MessageAction>
                 <MessageAction
-                  label="Like"
-                  onClick={onLike}
-                  tooltip="Like this response"
-                >
-                  <ThumbsUpIcon
-                    className="size-4"
-                    fill={liked ? "currentColor" : "none"}
-                  />
-                </MessageAction>
-                <MessageAction
-                  label="Dislike"
-                  onClick={onDislike}
-                  tooltip="Dislike this response"
-                >
-                  <ThumbsDownIcon
-                    className="size-4"
-                    fill={disliked ? "currentColor" : "none"}
-                  />
-                </MessageAction>
-                <MessageAction
                   label="Copy"
                   onClick={() => onCopy(data.versions?.[0]?.content || "")}
-                  tooltip="Copy to clipboard"
+                  tooltip={isCopied ? "已复制" : "Copy to clipboard"}
                 >
                   <CopyIcon className="size-4" />
                 </MessageAction>
@@ -155,29 +124,9 @@ function TextMessageItem({
               <RefreshCcwIcon className="size-4" />
             </MessageAction>
             <MessageAction
-              label="Like"
-              onClick={onLike}
-              tooltip="Like this response"
-            >
-              <ThumbsUpIcon
-                className="size-4"
-                fill={liked ? "currentColor" : "none"}
-              />
-            </MessageAction>
-            <MessageAction
-              label="Dislike"
-              onClick={onDislike}
-              tooltip="Dislike this response"
-            >
-              <ThumbsDownIcon
-                className="size-4"
-                fill={disliked ? "currentColor" : "none"}
-              />
-            </MessageAction>
-            <MessageAction
               label="Copy"
               onClick={() => onCopy(data.content)}
-              tooltip="Copy to clipboard"
+              tooltip={isCopied ? "已复制" : "Copy to clipboard"}
             >
               <CopyIcon className="size-4" />
             </MessageAction>
@@ -224,11 +173,18 @@ function ToolMessageItem({ message }: ToolMessageItemProps) {
 }
 
 export default function MessageList({ messages, onRetry }: MessageListProps) {
-  const [liked, setLiked] = useState<Record<string, boolean>>({});
-  const [disliked, setDisliked] = useState<Record<string, boolean>>({});
-
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const handleCopy = (content: string) => {
     navigator.clipboard.writeText(content);
+  };
+
+  const handleCopied = (messageKey: string) => {
+    setCopiedKey(messageKey);
+    window.clearTimeout((handleCopied as unknown as { timer?: number }).timer);
+    (handleCopied as unknown as { timer?: number }).timer = window.setTimeout(
+      () => setCopiedKey(null),
+      1200
+    );
   };
 
   const handleRetry = (messageKey: string) => {
@@ -246,21 +202,11 @@ export default function MessageList({ messages, onRetry }: MessageListProps) {
               key={message.key}
               message={message}
               data={message.data}
-              liked={liked[message.key] || false}
-              disliked={disliked[message.key] || false}
-              onLike={() =>
-                setLiked((prev) => ({
-                  ...prev,
-                  [message.key]: !prev[message.key],
-                }))
-              }
-              onDislike={() =>
-                setDisliked((prev) => ({
-                  ...prev,
-                  [message.key]: !prev[message.key],
-                }))
-              }
-              onCopy={handleCopy}
+              isCopied={copiedKey === message.key}
+              onCopy={(content) => {
+                handleCopy(content);
+                handleCopied(message.key);
+              }}
               onRetry={() => handleRetry(message.key)}
             />
           );

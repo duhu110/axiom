@@ -75,9 +75,4 @@ export type BotMessage = {
 export type Conversation = {
   id: string;
   title: string;
-  lastMessage?: string;
-  lastMessageAt?: Date;
-  messageCount?: number;
-  isArchived?: boolean;
-  isActive?: boolean;
 };
