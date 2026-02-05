@@ -37,6 +37,8 @@ interface UsageTableProps {
     description?: string;
     usageHistory: UsageItem[];
     showTotal?: boolean;
+    showExport?: boolean;
+    contentClassName?: string;
 }
 
 export function UsageTable({
@@ -45,6 +47,8 @@ export function UsageTable({
     description,
     usageHistory,
     showTotal = true, // Default to true
+    showExport = true, // Default to true
+    contentClassName,
 }: UsageTableProps) {
     const totalRow = showTotal
         ? usageHistory.reduce(
@@ -69,49 +73,32 @@ export function UsageTable({
         )
         : null;
 
-    const formatNumber = (num: number) => {
+    const formatNumber = useCallback((num: number) => {
         return new Intl.NumberFormat().format(num);
-    };
+    }, []);
 
-    const formatCurrency = (amount: number) => {
-        return `$${amount.toFixed(2)}`;
-    };
-    const hasApiCost = usageHistory.some(
-        (item) => item.apiCost !== undefined && item.apiCost !== null,
-    );
-    const hasCostToYou = usageHistory.some(
-        (item) => item.costToYou !== undefined && item.costToYou !== null,
-    );
-
-    const exportColumns = [
-        { key: "model", label: "Model" },
-        { key: "inputWithCache", label: "Input (w/ Cache)" },
-        { key: "inputWithoutCache", label: "Input (w/o Cache)" },
-        { key: "cacheRead", label: "Cache Read" },
-        { key: "output", label: "Output" },
-        { key: "totalTokens", label: "Total Tokens" },
-        { key: "apiCost", label: "API Cost" },
-        { key: "costToYou", label: "Cost to You" },
-    ] as const;
     // --- CSV EXPORT LOGIC ---
     const exportToCsv = useCallback(() => {
         if (!usageHistory || usageHistory.length === 0) {
             console.warn("No data to export.");
             return;
         }
-        // 1. Filter columns to match what is displayed
-        const columnsToExport = exportColumns.filter((col) => {
-            if (col.key === "apiCost") return hasApiCost;
-            if (col.key === "costToYou") return hasCostToYou;
-            return true;
-        });
 
-        // 2. Generate Header Row using display labels
-        const headerRow = columnsToExport.map((col) => `"${col.label}"`).join(",");
+        const exportColumns = [
+            { key: "model", label: "Model" },
+            { key: "inputWithCache", label: "Input (w/ Cache)" },
+            { key: "inputWithoutCache", label: "Input (w/o Cache)" },
+            { key: "cacheRead", label: "Cache Read" },
+            { key: "output", label: "Output" },
+            { key: "totalTokens", label: "Total Tokens" },
+        ] as const;
 
-        // 3. Helper to format a single data item into a CSV row
+        // 1. Generate Header Row using display labels
+        const headerRow = exportColumns.map((col) => `"${col.label}"`).join(",");
+
+        // 2. Helper to format a single data item into a CSV row
         const getCsvRow = (item: UsageItem & { model: string }): string => {
-            return columnsToExport
+            return exportColumns
                 .map((col) => {
                     const key = col.key as keyof UsageItem;
                     const value = item[key];
@@ -120,9 +107,6 @@ export function UsageTable({
 
                     if (key === "model") {
                         formattedValue = item.model;
-                    } else if (key === "apiCost" || key === "costToYou") {
-                        // Apply currency formatting
-                        formattedValue = formatCurrency(Number(value ?? 0));
                     } else {
                         formattedValue = formatNumber(Number(value ?? 0)); // Apply number formatting for tokens
                     }
@@ -134,7 +118,7 @@ export function UsageTable({
                 .join(",");
         };
 
-        // 4. Map usage history rows
+        // 3. Map usage history rows
         const allRows = usageHistory.map((item) => getCsvRow(item));
 
         // 5. Conditionally add the total row
@@ -147,7 +131,7 @@ export function UsageTable({
 
             allRows.push(getCsvRow(totalItem));
         }
-        // 6. Combine all content and trigger download (BOM + CRLF for Excel)
+        // 4. Combine all content and trigger download (BOM + CRLF for Excel)
         const csvContent = [headerRow, ...allRows].join("\r\n");
         const blob = new Blob(["\uFEFF", csvContent], {
             type: "text/csv;charset=utf-8;",
@@ -170,10 +154,7 @@ export function UsageTable({
         usageHistory,
         totalRow,
         showTotal,
-        hasApiCost,
-        hasCostToYou,
         formatNumber,
-        formatCurrency,
     ]);
     // --- END CSV EXPORT LOGIC ---
     // Calculate total row if showTotal is true
@@ -185,7 +166,7 @@ export function UsageTable({
                     {description && <CardDescription>{description}</CardDescription>}
                 </div>
                 {/* Export Button on the top right */}
-                {usageHistory.length > 0 && (
+                {showExport && usageHistory.length > 0 && (
                     <Button
                         onClick={exportToCsv}
                         variant="outline"
@@ -197,7 +178,7 @@ export function UsageTable({
                     </Button>
                 )}
             </CardHeader>
-            <CardContent>
+            <CardContent className={contentClassName}>
                 <div className="overflow-x-auto rounded-md border">
                     <Table>
                         <TableCaption className="sr-only">
@@ -223,25 +204,13 @@ export function UsageTable({
                                     <span className="hidden sm:inline">Total Tokens</span>
                                     <span className="sm:hidden">Total</span>
                                 </TableHead>
-                                {hasApiCost && (
-                                    <TableHead className="text-right">
-                                        <span className="hidden sm:inline">API Cost</span>
-                                        <span className="sm:hidden">API</span>
-                                    </TableHead>
-                                )}
-                                {hasCostToYou && (
-                                    <TableHead className="text-right">
-                                        <span className="hidden sm:inline">Cost to You</span>
-                                        <span className="sm:hidden">Cost</span>
-                                    </TableHead>
-                                )}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {usageHistory.length === 0 && (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={8}
+                                        colSpan={6}
                                         className="text-muted-foreground h-24 text-center"
                                     >
                                         No usage data available
@@ -266,16 +235,6 @@ export function UsageTable({
                                     <TableCell className="text-right">
                                         {formatNumber(item.totalTokens)}
                                     </TableCell>
-                                    {hasApiCost && (
-                                        <TableCell className="text-right">
-                                            {formatCurrency(item.apiCost || 0)}
-                                        </TableCell>
-                                    )}
-                                    {hasCostToYou && (
-                                        <TableCell className="text-right">
-                                            {formatCurrency(item.costToYou || 0)}
-                                        </TableCell>
-                                    )}
                                 </TableRow>
                             ))}
                             {showTotal && totalRow && (
@@ -296,16 +255,6 @@ export function UsageTable({
                                     <TableCell className="text-right font-semibold">
                                         {formatNumber(totalRow.totalTokens)}
                                     </TableCell>
-                                    {hasApiCost && (
-                                        <TableCell className="text-right font-semibold">
-                                            {formatCurrency(totalRow.apiCost || 0)}
-                                        </TableCell>
-                                    )}
-                                    {hasCostToYou && (
-                                        <TableCell className="text-right font-semibold">
-                                            {formatCurrency(totalRow.costToYou || 0)}
-                                        </TableCell>
-                                    )}
                                 </TableRow>
                             )}
                         </TableBody>

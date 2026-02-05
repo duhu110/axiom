@@ -14,7 +14,7 @@ function Drawer({
 function DrawerTrigger({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {
-  return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />
+  return <DrawerPrimitive.Trigger data-slot="drawer-trigger" suppressHydrationWarning {...props} />
 }
 
 function DrawerPortal({

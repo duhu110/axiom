@@ -30,14 +30,8 @@ export function NotFoundPage() {
 						<EmptyContent>
 							<div className="flex gap-2">
 								<Button asChild>
-									<a href="#">
+									<a href="/">
 										<Home /> Go Home
-									</a>
-								</Button>
-
-								<Button asChild variant="outline">
-									<a href="#">
-										<Compass /> Explore
 									</a>
 								</Button>
 							</div>

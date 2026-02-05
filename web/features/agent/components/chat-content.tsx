@@ -32,6 +32,7 @@ import {
     PromptInputTextarea,
 } from "@/components/prompt-kit/prompt-input"
 import { ScrollButton } from "@/components/prompt-kit/scroll-button"
+import { AgentTool } from "@/features/agent/components/agent-tool"
 
 
 
@@ -149,6 +150,7 @@ export function ChatContent() {
                                             >
                                                 {message.content}
                                             </MessageContent>
+                                            <AgentTool />
                                             <MessageActions
                                                 className={cn(
                                                     "-ml-2.5 flex gap-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100",
@@ -162,24 +164,6 @@ export function ChatContent() {
                                                         className="rounded-full"
                                                     >
                                                         <Copy />
-                                                    </Button>
-                                                </MessageAction>
-                                                <MessageAction tooltip="Upvote" delayDuration={100}>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="rounded-full"
-                                                    >
-                                                        <ThumbsUp />
-                                                    </Button>
-                                                </MessageAction>
-                                                <MessageAction tooltip="Downvote" delayDuration={100}>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="rounded-full"
-                                                    >
-                                                        <ThumbsDown />
                                                     </Button>
                                                 </MessageAction>
                                             </MessageActions>

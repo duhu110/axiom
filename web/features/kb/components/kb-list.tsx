@@ -121,7 +121,6 @@ function getInitials(name: string): string {
 
 export default function KbList({
   projects = [],
-  currentUserId,
   onCreate,
   onUpdate,
   onDelete,
