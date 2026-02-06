@@ -5,66 +5,190 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agent SSE Test</title>
     <style>
-        body { 
-            font-family: sans-serif; 
-            margin: 0; 
-            padding: 20px; 
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 16px;
             display: flex;
             height: 100vh;
             box-sizing: border-box;
-            gap: 20px;
+            gap: 16px;
+            background: #fafafa;
         }
         .container {
+            flex: 1.1;
+            display: flex;
+            flex-direction: column;
+            min-width: 420px;
+        }
+        .right-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
-            max-width: 60%;
+            min-width: 520px;
+            gap: 12px;
         }
-        .sidebar {
-            flex: 1;
-            border: 1px solid #ccc;
+        .panel {
+            border: 1px solid #d6d6d6;
+            border-radius: 8px;
+            background: #fff;
             padding: 10px;
-            background-color: #f5f5f5;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
+            overflow: hidden;
         }
-        #chat-box { 
-            border: 1px solid #ccc; 
-            padding: 10px; 
-            flex: 1; 
-            overflow-y: auto; 
-            margin-bottom: 10px; 
+        .panel h3 {
+            margin: 0 0 8px;
+            font-size: 14px;
+        }
+        #chat-box {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 10px;
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            background: #fff;
         }
         .input-area {
             display: flex;
             gap: 10px;
         }
         .message { margin-bottom: 10px; }
-        .user { color: blue; }
-        .agent { color: green; }
-        .log-entry { border-bottom: 1px solid #ddd; padding: 2px 0; }
+        .user { color: #0b57d0; }
+        .agent { color: #0f9d58; }
+
+        .event-card {
+            border: 1px solid #eee;
+            border-left-width: 4px;
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 8px;
+            background: #fcfcfc;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            color: #333;
+        }
+        .event-header {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .event-chip {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 12px;
+            background: #efefef;
+            color: #222;
+            font-size: 11px;
+            line-height: 18px;
+        }
+        .event-json {
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 180px;
+            overflow: auto;
+            background: #f7f7f7;
+            border-radius: 4px;
+            padding: 6px;
+            border: 1px solid #eee;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            font-size: 12px;
+        }
+        .stat {
+            background: #f6f8ff;
+            border: 1px solid #dfe5ff;
+            border-radius: 6px;
+            padding: 6px;
+        }
+        .stat .label { color: #666; font-size: 11px; }
+        .stat .value { font-weight: 700; color: #1a237e; }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .toolbar input, .toolbar select, .toolbar button {
+            font-size: 12px;
+            padding: 5px 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #fff;
+        }
+
+        .log-box {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px;
+            background: #f9f9f9;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .log-entry { border-bottom: 1px dashed #ddd; padding: 3px 0; }
         .log-time { color: #888; margin-right: 5px; }
+
+        #event-feed {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px;
+            background: #fff;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Agent SSE Test</h1>
+        <h1 style="margin: 0 0 10px;">Agent SSE Test (Verbose)</h1>
         <div style="margin-bottom: 10px;">
-            <input type="text" id="token" placeholder="Enter Access Token" style="width: 100%; padding: 5px; box-sizing: border-box;">
+            <input type="text" id="token" placeholder="Enter Access Token" style="width: 100%; padding: 7px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc;">
         </div>
+
         <div id="chat-box"></div>
+
         <div class="input-area">
-            <input type="text" id="query" placeholder="Type a message..." style="flex: 1; padding: 5px;">
-            <button onclick="sendMessage()" style="padding: 5px 15px;">Send</button>
+            <input type="text" id="query" placeholder="Type a message..." style="flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+            <button onclick="sendMessage()" style="padding: 8px 16px; border-radius: 6px; border: 1px solid #ccc;">Send</button>
         </div>
     </div>
-    
-    <div class="sidebar" id="log-box">
-        <h3>SSE Raw Output</h3>
-        <div id="session-info" style="margin-bottom: 10px; font-weight: bold;"></div>
-        <div id="logs"></div>
+
+    <div class="right-panel">
+        <div class="panel">
+            <h3>Session & Metrics</h3>
+            <div id="session-info" style="margin-bottom: 8px; font-weight: bold; font-size: 12px;"></div>
+            <div class="stats-grid" id="stats-grid"></div>
+        </div>
+
+        <div class="panel" style="display:flex; flex-direction:column; min-height: 220px;">
+            <h3>Raw SSE Stream</h3>
+            <div class="toolbar">
+                <input id="filter-keyword" placeholder="Filter keyword (event/name/run_id)" />
+                <select id="filter-type">
+                    <option value="all">All types</option>
+                    <option value="0">0:text</option>
+                    <option value="2">2:reasoning</option>
+                    <option value="9">9:tool_call</option>
+                    <option value="a">a:tool_result</option>
+                    <option value="e">e:raw_event</option>
+                </select>
+                <button onclick="clearLogs()">Clear logs</button>
+            </div>
+            <div class="log-box" id="logs"></div>
+        </div>
+
+        <div class="panel" style="display:flex; flex-direction:column; min-height: 280px;">
+            <h3>Structured Event Feed (Detailed)</h3>
+            <div id="event-feed"></div>
+        </div>
     </div>
 
     <script>
@@ -72,176 +196,345 @@
         const queryInput = document.getElementById('query');
         const tokenInput = document.getElementById('token');
         const logsContainer = document.getElementById('logs');
-        
-        // Generate UUID function
+        const eventFeed = document.getElementById('event-feed');
+        const statsGrid = document.getElementById('stats-grid');
+
+        const state = {
+            totalLines: 0,
+            totalEvents: 0,
+            textChunks: 0,
+            reasoningChunks: 0,
+            toolCalls: 0,
+            toolResults: 0,
+            rawEvents: 0,
+            byEvent: {},
+            parserBuffer: '',
+        };
+
         function uuidv4() {
             return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
                 (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> (+c / 4)).toString(16)
             );
         }
-        
-        // Generate session ID on load
+
         const sessionId = uuidv4();
         document.getElementById('session-info').textContent = `Session ID: ${sessionId}`;
 
-        function addLog(text) {
+        function eventColor(kind) {
+            if (kind === 'on_tool_start') return '#1e88e5';
+            if (kind === 'on_tool_end') return '#43a047';
+            if (kind === 'on_chat_model_stream') return '#8e24aa';
+            if (kind === 'on_chat_model_start' || kind === 'on_chat_model_end') return '#6d4c41';
+            if (kind === 'on_retriever_start' || kind === 'on_retriever_end') return '#f4511e';
+            if (kind === 'on_chain_start' || kind === 'on_chain_end') return '#3949ab';
+            return '#757575';
+        }
+
+        function truncate(value, n = 240) {
+            if (typeof value !== 'string') value = JSON.stringify(value, null, 2);
+            if (value.length <= n) return value;
+            return value.slice(0, n) + ' ...';
+        }
+
+        function toPrettyJson(value) {
+            try {
+                return JSON.stringify(value, null, 2);
+            } catch {
+                return String(value);
+            }
+        }
+
+        function updateStats() {
+            const byEventPairs = Object.entries(state.byEvent)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 6)
+                .map(([k, v]) => `<div><span class="label">${k}</span>: <span class="value">${v}</span></div>`)
+                .join('');
+
+            statsGrid.innerHTML = `
+                <div class="stat"><div class="label">SSE lines</div><div class="value">${state.totalLines}</div></div>
+                <div class="stat"><div class="label">Raw events (e)</div><div class="value">${state.rawEvents}</div></div>
+                <div class="stat"><div class="label">Structured events</div><div class="value">${state.totalEvents}</div></div>
+                <div class="stat"><div class="label">Text chunks (0)</div><div class="value">${state.textChunks}</div></div>
+                <div class="stat"><div class="label">Reasoning chunks (2)</div><div class="value">${state.reasoningChunks}</div></div>
+                <div class="stat"><div class="label">Tool start/end</div><div class="value">${state.toolCalls}/${state.toolResults}</div></div>
+                <div class="stat" style="grid-column: 1 / -1;">
+                    <div class="label">Top LangGraph event types</div>
+                    <div style="margin-top:4px;">${byEventPairs || '<span style="color:#888;">No events yet</span>'}</div>
+                </div>
+            `;
+        }
+
+        function matchesFilter(text, typeCode) {
+            const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
+            const typeFilter = document.getElementById('filter-type').value;
+            if (typeFilter !== 'all' && typeCode !== typeFilter) return false;
+            if (!keyword) return true;
+            return text.toLowerCase().includes(keyword);
+        }
+
+        function addLog(typeCode, text) {
+            state.totalLines += 1;
+            updateStats();
+
+            if (!matchesFilter(text, typeCode)) return;
+
             const entry = document.createElement('div');
             entry.className = 'log-entry';
             const time = new Date().toLocaleTimeString();
-            // 使用 textContent 避免 HTML 注入，并用 createTextNode 保留原始格式
+
             const timeSpan = document.createElement('span');
             timeSpan.className = 'log-time';
             timeSpan.textContent = `[${time}] `;
             entry.appendChild(timeSpan);
-            
-            // 对 SSE 数据进行颜色标记
+
             const contentSpan = document.createElement('span');
-            if (text.includes('2:')) {
-                contentSpan.style.color = '#9966cc';  // 紫色 - 推理内容
-            } else if (text.includes('0:')) {
-                contentSpan.style.color = '#006600';  // 绿色 - 正文
-            } else if (text.includes('9:')) {
-                contentSpan.style.color = '#0066cc';  // 蓝色 - 工具调用
-            } else if (text.includes('a:')) {
-                contentSpan.style.color = '#cc6600';  // 橙色 - 工具结果
-            } else if (text.includes('e:')) {
-                contentSpan.style.color = '#555555';  // 深灰色 - 原始事件
-            }
-            contentSpan.textContent = text;
+            if (typeCode === '2') contentSpan.style.color = '#8e24aa';
+            else if (typeCode === '0') contentSpan.style.color = '#2e7d32';
+            else if (typeCode === '9') contentSpan.style.color = '#1565c0';
+            else if (typeCode === 'a') contentSpan.style.color = '#ef6c00';
+            else if (typeCode === 'e') contentSpan.style.color = '#555';
+            contentSpan.textContent = `${typeCode}:${text}`;
             entry.appendChild(contentSpan);
-            
+
             logsContainer.appendChild(entry);
-            logsContainer.parentElement.scrollTop = logsContainer.parentElement.scrollHeight;
+            logsContainer.scrollTop = logsContainer.scrollHeight;
         }
 
-        async function sendMessage() {
-            const query = queryInput.value;
-            const token = tokenInput.value;
-            if (!query) return;
-            
-            if (!token) {
-                alert("Please enter an access token.");
+        function addStructuredEvent(rawEvent) {
+            state.totalEvents += 1;
+            state.rawEvents += 1;
+            const kind = rawEvent?.event || 'unknown';
+            state.byEvent[kind] = (state.byEvent[kind] || 0) + 1;
+            updateStats();
+
+            const card = document.createElement('div');
+            card.className = 'event-card';
+            card.style.borderLeftColor = eventColor(kind);
+
+            const header = document.createElement('div');
+            header.className = 'event-header';
+            header.innerHTML = `
+                <span class="event-chip">event: ${rawEvent.event || '-'}</span>
+                <span class="event-chip">name: ${rawEvent.name || '-'}</span>
+                <span class="event-chip">run: ${rawEvent.run_id || '-'}</span>
+                <span class="event-chip">parents: ${(rawEvent.parent_ids || []).length}</span>
+            `;
+            card.appendChild(header);
+
+            if (rawEvent.chunk_snapshot) {
+                const chunk = document.createElement('div');
+                chunk.style.marginBottom = '6px';
+                chunk.innerHTML = `<strong>chunk_snapshot:</strong> ${truncate(rawEvent.chunk_snapshot, 300)}`;
+                card.appendChild(chunk);
+            }
+
+            if (rawEvent.metadata) {
+                const meta = document.createElement('details');
+                meta.innerHTML = `<summary><strong>metadata</strong></summary><div class="event-json">${toPrettyJson(rawEvent.metadata)}</div>`;
+                card.appendChild(meta);
+            }
+
+            if (rawEvent.data !== undefined) {
+                const data = document.createElement('details');
+                data.innerHTML = `<summary><strong>data</strong></summary><div class="event-json">${toPrettyJson(rawEvent.data)}</div>`;
+                card.appendChild(data);
+            }
+
+            const raw = document.createElement('details');
+            raw.innerHTML = `<summary><strong>raw event (full)</strong></summary><div class="event-json">${toPrettyJson(rawEvent.raw || rawEvent)}</div>`;
+            card.appendChild(raw);
+
+            eventFeed.appendChild(card);
+            eventFeed.scrollTop = eventFeed.scrollHeight;
+        }
+
+        function clearLogs() {
+            logsContainer.innerHTML = '';
+            eventFeed.innerHTML = '';
+            state.totalLines = 0;
+            state.totalEvents = 0;
+            state.textChunks = 0;
+            state.reasoningChunks = 0;
+            state.toolCalls = 0;
+            state.toolResults = 0;
+            state.rawEvents = 0;
+            state.byEvent = {};
+            state.parserBuffer = '';
+            updateStats();
+        }
+
+        function processSseLine(line, agentDiv) {
+            if (!line) return;
+            const typeCode = line[0];
+            if (line[1] !== ':') return;
+            const payloadText = line.slice(2);
+
+            addLog(typeCode, payloadText);
+
+            if (typeCode === '0') {
+                state.textChunks += 1;
+                updateStats();
+                try {
+                    const text = JSON.parse(payloadText);
+                    agentDiv.textContent += text;
+                } catch (e) {
+                    console.error('Error parsing text JSON:', e);
+                }
                 return;
             }
 
-            // Add user message
+            if (typeCode === '2') {
+                state.reasoningChunks += 1;
+                updateStats();
+                try {
+                    const reasoning = JSON.parse(payloadText);
+                    const reasoningSpan = document.createElement('span');
+                    reasoningSpan.style.color = '#6a1b9a';
+                    reasoningSpan.style.fontStyle = 'italic';
+                    reasoningSpan.textContent = reasoning;
+                    agentDiv.appendChild(reasoningSpan);
+                } catch (e) {
+                    console.error('Error parsing reasoning JSON:', e);
+                }
+                return;
+            }
+
+            if (typeCode === '9') {
+                state.toolCalls += 1;
+                updateStats();
+                try {
+                    const toolCall = JSON.parse(payloadText);
+                    const toolSpan = document.createElement('div');
+                    toolSpan.style.color = '#1565c0';
+                    toolSpan.style.fontSize = '12px';
+                    toolSpan.textContent = `[Tool start] ${toolCall.toolName} args=${truncate(toolCall.args, 140)}`;
+                    agentDiv.appendChild(toolSpan);
+                } catch (e) {
+                    console.error('Error parsing tool call JSON:', e);
+                }
+                return;
+            }
+
+            if (typeCode === 'a') {
+                state.toolResults += 1;
+                updateStats();
+                try {
+                    const toolResult = JSON.parse(payloadText);
+                    const resultSpan = document.createElement('div');
+                    resultSpan.style.color = '#2e7d32';
+                    resultSpan.style.fontSize = '12px';
+                    resultSpan.textContent = `[Tool result] ${truncate(toolResult.result, 180)}`;
+                    agentDiv.appendChild(resultSpan);
+                } catch (e) {
+                    console.error('Error parsing tool result JSON:', e);
+                }
+                return;
+            }
+
+            if (typeCode === 'e') {
+                try {
+                    const rawEvent = JSON.parse(payloadText);
+                    addStructuredEvent(rawEvent);
+
+                    const eventSpan = document.createElement('div');
+                    eventSpan.style.color = '#616161';
+                    eventSpan.style.fontSize = '12px';
+                    eventSpan.textContent = `[Event] ${rawEvent.event || '-'} | ${rawEvent.name || '-'} | run=${rawEvent.run_id || '-'}`;
+                    agentDiv.appendChild(eventSpan);
+                } catch (e) {
+                    console.error('Error parsing raw event JSON:', e);
+                }
+            }
+        }
+
+        async function sendMessage() {
+            const query = queryInput.value.trim();
+            const token = tokenInput.value.trim();
+            if (!query) return;
+
+            if (!token) {
+                alert('Please enter an access token.');
+                return;
+            }
+
             const userDiv = document.createElement('div');
             userDiv.className = 'message user';
             userDiv.textContent = 'User: ' + query;
             chatBox.appendChild(userDiv);
             queryInput.value = '';
 
-            // Create agent message container
             const agentDiv = document.createElement('div');
             agentDiv.className = 'message agent';
             agentDiv.textContent = 'Agent: ';
             chatBox.appendChild(agentDiv);
-            
-            addLog(`>>> Sending: ${query}`);
+
+            addLog('i', `>> sending query=${query}`);
 
             try {
                 const response = await fetch('http://localhost:8000/agent/chat/stream', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${token}`,
                     },
                     body: JSON.stringify({
-                        query: query,
+                        query,
                         chat_history: [],
-                        session_id: sessionId
-                    })
+                        session_id: sessionId,
+                    }),
                 });
+
+                if (!response.ok || !response.body) {
+                    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+                }
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                
+
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    
-                    const chunk = decoder.decode(value, { stream: true });
-                    addLog(chunk); // Log raw chunk
-                    
-                    const lines = chunk.split('\n');
-                    
-                    for (const line of lines) {
-                        if (line.startsWith('0:')) {
-                            // 0:"text" -> text content
-                            try {
-                                const text = JSON.parse(line.substring(2));
-                                agentDiv.textContent += text;
-                            } catch (e) {
-                                console.error('Error parsing text JSON:', e);
-                            }
-                        } else if (line.startsWith('2:')) {
-                            // 2:"reasoning" -> reasoning content (DeepSeek)
-                            try {
-                                const reasoning = JSON.parse(line.substring(2));
-                                // 显示推理内容（灰色斜体）
-                                const reasoningSpan = document.createElement('span');
-                                reasoningSpan.style.color = '#888';
-                                reasoningSpan.style.fontStyle = 'italic';
-                                reasoningSpan.textContent = reasoning;
-                                agentDiv.appendChild(reasoningSpan);
-                            } catch (e) {
-                                console.error('Error parsing reasoning JSON:', e);
-                            }
-                        } else if (line.startsWith('9:')) {
-                            // 9:{toolCall} -> tool call
-                            try {
-                                const toolCall = JSON.parse(line.substring(2));
-                                const toolSpan = document.createElement('div');
-                                toolSpan.style.color = '#0066cc';
-                                toolSpan.style.fontSize = '12px';
-                                toolSpan.textContent = `[Tool: ${toolCall.toolName}]`;
-                                agentDiv.appendChild(toolSpan);
-                            } catch (e) {
-                                console.error('Error parsing tool call JSON:', e);
-                            }
-                        } else if (line.startsWith('a:')) {
-                            // a:{toolResult} -> tool result
-                            try {
-                                const toolResult = JSON.parse(line.substring(2));
-                                const resultSpan = document.createElement('div');
-                                resultSpan.style.color = '#009900';
-                                resultSpan.style.fontSize = '12px';
-                                resultSpan.textContent = `[Result: ${toolResult.result.substring(0, 100)}...]`;
-                                agentDiv.appendChild(resultSpan);
-                            } catch (e) {
-                                console.error('Error parsing tool result JSON:', e);
-                            }
-                        } else if (line.startsWith('e:')) {
-                            // e:{rawEvent} -> raw LangGraph event for debug
-                            try {
-                                const rawEvent = JSON.parse(line.substring(2));
-                                const eventSpan = document.createElement('div');
-                                eventSpan.style.color = '#666';
-                                eventSpan.style.fontSize = '12px';
-                                eventSpan.textContent = `[Event: ${rawEvent.event}${rawEvent.name ? ` | ${rawEvent.name}` : ''}]`;
-                                agentDiv.appendChild(eventSpan);
-                            } catch (e) {
-                                console.error('Error parsing raw event JSON:', e);
-                            }
-                        }
+
+                    state.parserBuffer += decoder.decode(value, { stream: true });
+                    const lines = state.parserBuffer.split('\n');
+                    state.parserBuffer = lines.pop() || '';
+
+                    for (const rawLine of lines) {
+                        const line = rawLine.trim();
+                        processSseLine(line, agentDiv);
                     }
-                    
+
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }
-                addLog('<<< Stream finished');
+
+                if (state.parserBuffer.trim()) {
+                    processSseLine(state.parserBuffer.trim(), agentDiv);
+                    state.parserBuffer = '';
+                }
+
+                addLog('i', '<< stream finished');
             } catch (error) {
                 console.error('Error:', error);
                 agentDiv.textContent += ' [Error: ' + error.message + ']';
-                addLog(`!!! Error: ${error.message}`);
+                addLog('!', `error: ${error.message}`);
             }
         }
-        
-        // Allow Enter key to send
+
         queryInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
+
+        document.getElementById('filter-keyword').addEventListener('input', () => {
+            // New logs will follow filter; we keep existing logs untouched for now.
+        });
+        document.getElementById('filter-type').addEventListener('change', () => {
+            // New logs will follow filter; we keep existing logs untouched for now.
+        });
+
+        updateStats();
     </script>
 </body>
 </html>
