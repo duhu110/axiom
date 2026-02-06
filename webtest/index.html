@@ -148,7 +148,7 @@
 </head>
 <body>
     <div class="container">
-        <h1 style="margin: 0 0 10px;">Agent SSE Test (Verbose)</h1>
+        <h1 style="margin: 0 0 10px;">Agent SSE Test</h1>
         <div style="margin-bottom: 10px;">
             <input type="text" id="token" placeholder="Enter Access Token" style="width: 100%; padding: 7px; box-sizing: border-box; border-radius: 6px; border: 1px solid #ccc;">
         </div>
@@ -186,7 +186,7 @@
         </div>
 
         <div class="panel" style="display:flex; flex-direction:column; min-height: 280px;">
-            <h3>Structured Event Feed (Detailed)</h3>
+            <h3>Event Details</h3>
             <div id="event-feed"></div>
         </div>
     </div>
@@ -404,12 +404,7 @@
                 state.toolCalls += 1;
                 updateStats();
                 try {
-                    const toolCall = JSON.parse(payloadText);
-                    const toolSpan = document.createElement('div');
-                    toolSpan.style.color = '#1565c0';
-                    toolSpan.style.fontSize = '12px';
-                    toolSpan.textContent = `[Tool start] ${toolCall.toolName} args=${truncate(toolCall.args, 140)}`;
-                    agentDiv.appendChild(toolSpan);
+                    JSON.parse(payloadText);
                 } catch (e) {
                     console.error('Error parsing tool call JSON:', e);
                 }
@@ -420,12 +415,7 @@
                 state.toolResults += 1;
                 updateStats();
                 try {
-                    const toolResult = JSON.parse(payloadText);
-                    const resultSpan = document.createElement('div');
-                    resultSpan.style.color = '#2e7d32';
-                    resultSpan.style.fontSize = '12px';
-                    resultSpan.textContent = `[Tool result] ${truncate(toolResult.result, 180)}`;
-                    agentDiv.appendChild(resultSpan);
+                    JSON.parse(payloadText);
                 } catch (e) {
                     console.error('Error parsing tool result JSON:', e);
                 }
@@ -437,11 +427,7 @@
                     const rawEvent = JSON.parse(payloadText);
                     addStructuredEvent(rawEvent);
 
-                    const eventSpan = document.createElement('div');
-                    eventSpan.style.color = '#616161';
-                    eventSpan.style.fontSize = '12px';
-                    eventSpan.textContent = `[Event] ${rawEvent.event || '-'} | ${rawEvent.name || '-'} | run=${rawEvent.run_id || '-'}`;
-                    agentDiv.appendChild(eventSpan);
+
                 } catch (e) {
                     console.error('Error parsing raw event JSON:', e);
                 }
