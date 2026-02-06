@@ -104,6 +104,8 @@
                 contentSpan.style.color = '#0066cc';  // 蓝色 - 工具调用
             } else if (text.includes('a:')) {
                 contentSpan.style.color = '#cc6600';  // 橙色 - 工具结果
+            } else if (text.includes('e:')) {
+                contentSpan.style.color = '#555555';  // 深灰色 - 原始事件
             }
             contentSpan.textContent = text;
             entry.appendChild(contentSpan);
@@ -208,6 +210,18 @@
                                 agentDiv.appendChild(resultSpan);
                             } catch (e) {
                                 console.error('Error parsing tool result JSON:', e);
+                            }
+                        } else if (line.startsWith('e:')) {
+                            // e:{rawEvent} -> raw LangGraph event for debug
+                            try {
+                                const rawEvent = JSON.parse(line.substring(2));
+                                const eventSpan = document.createElement('div');
+                                eventSpan.style.color = '#666';
+                                eventSpan.style.fontSize = '12px';
+                                eventSpan.textContent = `[Event: ${rawEvent.event}${rawEvent.name ? ` | ${rawEvent.name}` : ''}]`;
+                                agentDiv.appendChild(eventSpan);
+                            } catch (e) {
+                                console.error('Error parsing raw event JSON:', e);
                             }
                         }
                     }
