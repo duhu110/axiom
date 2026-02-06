@@ -71,21 +71,26 @@ class DeepSeekChat(ChatOpenAI):
                 content=delta.content or "",
                 additional_kwargs=additional_kwargs,
             )
-            
+
             # 创建 ChatGenerationChunk
+            # 保留usage信息以供LLM usage记录使用
+            generation_info = {}
+            if chunk.choices[0].finish_reason:
+                generation_info["finish_reason"] = chunk.choices[0].finish_reason
+            if hasattr(chunk, 'usage') and chunk.usage:
+                generation_info["usage"] = chunk.usage
+
             gen_chunk = ChatGenerationChunk(
                 message=message_chunk,
-                generation_info={
-                    "finish_reason": chunk.choices[0].finish_reason,
-                } if chunk.choices[0].finish_reason else None,
+                generation_info=generation_info if generation_info else None,
             )
-            
+
             if run_manager:
                 run_manager.on_llm_new_token(
                     gen_chunk.text,
                     chunk=gen_chunk,
                 )
-            
+
             yield gen_chunk
     
     async def _astream(
@@ -130,19 +135,24 @@ class DeepSeekChat(ChatOpenAI):
                 content=delta.content or "",
                 additional_kwargs=additional_kwargs,
             )
-            
+
             # 创建 ChatGenerationChunk
+            # 保留usage信息以供LLM usage记录使用
+            generation_info = {}
+            if chunk.choices[0].finish_reason:
+                generation_info["finish_reason"] = chunk.choices[0].finish_reason
+            if hasattr(chunk, 'usage') and chunk.usage:
+                generation_info["usage"] = chunk.usage
+
             gen_chunk = ChatGenerationChunk(
                 message=message_chunk,
-                generation_info={
-                    "finish_reason": chunk.choices[0].finish_reason,
-                } if chunk.choices[0].finish_reason else None,
+                generation_info=generation_info if generation_info else None,
             )
-            
+
             if run_manager:
                 await run_manager.on_llm_new_token(
                     gen_chunk.text,
                     chunk=gen_chunk,
                 )
-            
+
             yield gen_chunk

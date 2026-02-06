@@ -123,9 +123,48 @@ class AgentService:
 
                 # 监听模型输出结束事件，记录usage
                 if event_name == "on_chat_model_end":
-                    final_usage = event.get('data', {}).get('usage')
-                    final_model_name = event.get('data', {}).get('model_name', 'unknown')
-                    logger.info(f"Captured LLM usage: model={final_model_name}, usage={final_usage}")
+                    event_data = event.get('data', {})
+                    output = event_data.get('output')
+
+                    # 提取usage信息
+                    final_usage = None
+                    final_model_name = 'deepseek-chat'
+
+                    if output and hasattr(output, 'response_metadata') and output.response_metadata:
+                        raw_usage = output.response_metadata.get('usage')
+
+                        if raw_usage:
+                            # CompletionUsage对象需要转换为字典
+                            logger.info(f"Found raw usage: {raw_usage}")
+                            try:
+                                # 转换CompletionUsage为简单字典
+                                if hasattr(raw_usage, 'model_dump'):
+                                    final_usage = raw_usage.model_dump()
+                                else:
+                                    # 手动提取字段
+                                    final_usage = {
+                                        "prompt_tokens": getattr(raw_usage, 'prompt_tokens', 0),
+                                        "completion_tokens": getattr(raw_usage, 'completion_tokens', 0),
+                                        "total_tokens": getattr(raw_usage, 'total_tokens', 0),
+                                    }
+                                logger.info(f"Converted usage to dict: {final_usage}")
+                            except Exception as e:
+                                logger.warning(f"Failed to convert usage to dict: {e}")
+                    else:
+                        logger.warning("No response_metadata found on AIMessage")
+
+                    # 记录到数据库
+                    if final_usage and user_id:
+                        try:
+                            logger.info(f"Recording LLM usage for user_id={user_id}, model={final_model_name}")
+                            await record_usage(
+                                user_id=user_id,
+                                model_name=final_model_name,
+                                usage=final_usage,
+                            )
+                            logger.info("✓ LLM usage record saved successfully")
+                        except Exception as exc:
+                            logger.warning(f"Failed to record LLM usage: {exc}")
 
             except Exception as exc:
                 logger.warning(f"log agent event failed: {exc}")
@@ -133,16 +172,3 @@ class AgentService:
             chunk = convert_to_vercel_sse(event)
             if chunk:
                 yield chunk
-
-        # 流式结束后，记录usage到数据库
-        if final_usage and user_id:
-            try:
-                logger.info(f"Recording LLM usage for user_id={user_id}, model={final_model_name}")
-                await record_usage(
-                    user_id=user_id,
-                    model_name=final_model_name,
-                    usage=final_usage,
-                )
-                logger.info("LLM usage record saved successfully")
-            except Exception as exc:
-                logger.warning(f"Failed to record LLM usage: {exc}")
