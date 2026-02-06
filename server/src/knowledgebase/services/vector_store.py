@@ -10,6 +10,7 @@ import asyncio
 
 from langchain_postgres.vectorstores import PGVector
 from langchain_core.documents import Document
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from config import settings
 from knowledgebase.core.embedding import EmbeddingService
@@ -23,6 +24,11 @@ def get_kb_connection_string() -> str:
     if "+asyncpg" in uri:
         uri = uri.replace("+asyncpg", "+psycopg")
     return uri
+
+
+def get_kb_async_connection_string() -> str:
+    """获取 axiom_kb 的异步连接字符串"""
+    return settings.db.uri_kb
 
 
 class VectorStoreService:
@@ -54,11 +60,21 @@ class VectorStoreService:
         if cache_key not in cls._stores:
             embeddings = EmbeddingService.get_embeddings(embedding_model)
 
+            # Create async engine for PGVector async operations
+            # When an AsyncEngine is passed as connection, PGVector automatically
+            # sets async_mode=True and uses it for async methods like asimilarity_search()
+            async_engine = create_async_engine(
+                get_kb_async_connection_string(),
+                pool_size=5,
+                max_overflow=10,
+            )
+
             cls._stores[cache_key] = PGVector(
                 embeddings=embeddings,
                 collection_name=collection_name,
-                connection=get_kb_connection_string(),
+                connection=async_engine,
                 use_jsonb=True,
+                create_extension=False,  # Extension already created, and asyncpg has issues with multi-statement
             )
 
         return cls._stores[cache_key]
@@ -94,10 +110,10 @@ class VectorStoreService:
             })
         
         vector_store = cls.get_vector_store(embedding_model=embedding_model)
-        
-        # 使用线程池执行同步操作
-        ids = await asyncio.to_thread(vector_store.add_documents, documents)
-        
+
+        # Use async method directly (PGVector is now in async mode)
+        ids = await vector_store.aadd_documents(documents)
+
         logger.info(f"Added {len(ids)} vectors for doc {doc_id}")
         return ids
     
@@ -114,13 +130,10 @@ class VectorStoreService:
             是否成功
         """
         vector_store = cls.get_vector_store(embedding_model=embedding_model)
-        
+
         try:
-            # PGVector 支持按 metadata filter 删除
-            await asyncio.to_thread(
-                vector_store.delete,
-                filter={"doc_id": str(doc_id)}
-            )
+            # Use async method directly
+            await vector_store.adelete(filter={"doc_id": str(doc_id)})
             logger.info(f"Deleted vectors for doc {doc_id}")
             return True
         except Exception as e:
@@ -140,12 +153,10 @@ class VectorStoreService:
             是否成功
         """
         vector_store = cls.get_vector_store(embedding_model=embedding_model)
-        
+
         try:
-            await asyncio.to_thread(
-                vector_store.delete,
-                filter={"kb_id": str(kb_id)}
-            )
+            # Use async method directly
+            await vector_store.adelete(filter={"kb_id": str(kb_id)})
             logger.info(f"Deleted all vectors for kb {kb_id}")
             return True
         except Exception as e:
@@ -175,23 +186,22 @@ class VectorStoreService:
             (Document, score) 元组列表
         """
         vector_store = cls.get_vector_store(embedding_model=embedding_model)
-        
+
         filter_dict = {"kb_id": str(kb_id)}
-        
+
+        # Use async method directly
         if score_threshold is not None:
-            results = await asyncio.to_thread(
-                vector_store.similarity_search_with_relevance_scores,
+            results = await vector_store.asimilarity_search_with_relevance_scores(
                 query,
                 k=k,
                 filter=filter_dict,
                 score_threshold=score_threshold,
             )
         else:
-            results = await asyncio.to_thread(
-                vector_store.similarity_search_with_relevance_scores,
+            results = await vector_store.asimilarity_search_with_relevance_scores(
                 query,
                 k=k,
                 filter=filter_dict,
             )
-        
+
         return results
