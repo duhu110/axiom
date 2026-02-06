@@ -68,7 +68,7 @@ class AgentService:
         self._init_agents()
         return self._apps.get(route, self._apps["qa"])
 
-    async def chat(self, query: str, history: List[ChatMessage], session_id: str = "default"):
+    async def chat(self, query: str, history: List[ChatMessage], session_id: str = "default", kb_id: str | None = None):
         """
         非流式对话
         
@@ -90,13 +90,13 @@ class AgentService:
         input_messages = [HumanMessage(content=query)]
         config = {
             "configurable": {"thread_id": session_id},
-            "metadata": {"user_id": session_id}
+            "metadata": {"user_id": session_id, "kb_id": kb_id}
         }
         
         result = await app.ainvoke({"messages": input_messages}, config=config)
         return result["messages"][-1].content
 
-    async def chat_stream(self, query: str, history: List[ChatMessage], session_id: str, user_id: str = "default_user") -> AsyncGenerator[str, None]:
+    async def chat_stream(self, query: str, history: List[ChatMessage], session_id: str, user_id: str = "default_user", kb_id: str | None = None) -> AsyncGenerator[str, None]:
         """
         流式对话
         
@@ -122,7 +122,7 @@ class AgentService:
         
         config = {
             "configurable": {"thread_id": session_id},
-            "metadata": {"user_id": user_id} 
+            "metadata": {"user_id": user_id, "kb_id": kb_id} 
         }
         
         async for event in app.astream_events(
