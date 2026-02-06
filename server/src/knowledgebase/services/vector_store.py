@@ -10,6 +10,7 @@ import asyncio
 
 from langchain_postgres.vectorstores import PGVector
 from langchain_core.documents import Document
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from config import settings
 from knowledgebase.core.embedding import EmbeddingService
@@ -25,6 +26,11 @@ def get_kb_connection_string() -> str:
     return uri
 
 
+def get_kb_async_connection_string() -> str:
+    """获取 axiom_kb 的异步连接字符串"""
+    return settings.db.uri_kb
+
+
 class VectorStoreService:
     """向量存储服务"""
     
@@ -38,28 +44,37 @@ class VectorStoreService:
     ) -> PGVector:
         """
         获取向量存储实例
-        
+
         Args:
             collection_name: 集合名称
             embedding_model: Embedding 模型
-            
+
         Returns:
             PGVector 实例
         """
         if embedding_model is None:
             embedding_model = settings.kb.embedding_model
-            
+
         cache_key = f"{collection_name}:{embedding_model}"
-        
+
         if cache_key not in cls._stores:
             embeddings = EmbeddingService.get_embeddings(embedding_model)
+
+            # 创建异步引擎用于异步操作
+            async_engine = create_async_engine(
+                get_kb_async_connection_string(),
+                pool_size=5,
+                max_overflow=10,
+            )
+
             cls._stores[cache_key] = PGVector(
                 embeddings=embeddings,
                 collection_name=collection_name,
                 connection=get_kb_connection_string(),
+                async_engine=async_engine,
                 use_jsonb=True,
             )
-        
+
         return cls._stores[cache_key]
     
     @classmethod
