@@ -113,7 +113,7 @@ async def route_by_llm(
     返回严格三选一：qa / rag / sql，异常时 fallback 到关键词规则。
     """
     router_llm = llm or DeepSeekChat(
-        model=settings.agent.deepseek_chat_model,
+        model=settings.agent.deepseek_model,
         api_key=settings.agent.deepseek_api_key,
         base_url=settings.agent.deepseek_base_url,
         temperature=0,
