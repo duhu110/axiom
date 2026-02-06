@@ -24,10 +24,14 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     }
   }
 
-  const headers = {
-    'Content-Type': 'application/json',
-    ...init.headers,
-  };
+  // 判断是否为FormData，如果是则不设置Content-Type让浏览器自动处理boundary
+  const isFormData = init.body instanceof FormData;
+  const headers: Record<string, string> = isFormData 
+    ? { ...(init.headers as Record<string, string>) }
+    : {
+        'Content-Type': 'application/json',
+        ...(init.headers as Record<string, string>),
+      };
 
   try {
     const response = await fetch(url, {
@@ -82,4 +86,13 @@ export const api = {
     
   delete: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'DELETE' }),
+
+  /**
+   * 文件上传方法，使用FormData
+   * @param endpoint API端点
+   * @param formData FormData对象
+   * @param options 请求选项
+   */
+  upload: <T>(endpoint: string, formData: FormData, options?: RequestOptions) =>
+    request<T>(endpoint, { ...options, method: 'POST', body: formData }),
 };

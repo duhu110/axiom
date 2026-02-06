@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import {
@@ -11,6 +12,7 @@ import {
   LogOut,
 } from "lucide-react"
 import type { UsageItem } from "@/components/billingsdk/usage-table"
+import { useAuthStore } from "@/stores/auth-store"
 
 import {
   Avatar,
@@ -50,10 +52,29 @@ export function NavUser({
     avatar: string
   }
 }) {
+  const router = useRouter()
   const { isMobile } = useSidebar()
   const { setTheme, resolvedTheme } = useTheme()
   const [billingDialogOpen, setBillingDialogOpen] = React.useState(false)
   const userDropdownId = "sidebar-user-dropdown"
+  const { setUnauthenticated } = useAuthStore()
+
+  // 获取用户名首字母作为头像fallback
+  const getInitials = (name: string) => {
+    if (!name) return 'U'
+    // 如果是手机号，取后两位
+    if (/^\d+$/.test(name)) {
+      return name.slice(-2)
+    }
+    // 否则取首字母
+    return name.charAt(0).toUpperCase()
+  }
+
+  // 登出处理
+  const handleLogout = () => {
+    setUnauthenticated()
+    router.push('/login')
+  }
 
   // Usage history data
   const usageHistory: UsageItem[] = [
@@ -147,7 +168,7 @@ export function NavUser({
               >
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -166,7 +187,7 @@ export function NavUser({
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                    <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
@@ -200,7 +221,7 @@ export function NavUser({
                 <span className="ml-2">Toggle theme</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut />
                 Log out
               </DropdownMenuItem>

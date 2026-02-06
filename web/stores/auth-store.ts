@@ -9,12 +9,14 @@ interface AuthState {
   user: User | null;
   accessExpiresAt: number | null; // Unix timestamp in seconds
   serverTimeOffsetSec: number; // server_time - client_now (seconds)
+  _hasHydrated: boolean; // hydration 状态标记
   
   setAuthenticated: (user: User, accessExpiresAt?: number) => void;
   setUnauthenticated: () => void;
   setUser: (user: User) => void;
   setAccessExpiresAt: (expiresAt: number) => void;
   setServerTimeOffsetSec: (offsetSec: number) => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -24,6 +26,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessExpiresAt: null,
       serverTimeOffsetSec: 0,
+      _hasHydrated: false,
 
       setAuthenticated: (user, accessExpiresAt) => set({ 
         status: 'authenticated', 
@@ -43,6 +46,8 @@ export const useAuthStore = create<AuthState>()(
       setAccessExpiresAt: (expiresAt) => set({ accessExpiresAt: expiresAt }),
 
       setServerTimeOffsetSec: (offsetSec) => set({ serverTimeOffsetSec: offsetSec }),
+
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: 'auth-storage',
@@ -50,8 +55,12 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         accessExpiresAt: state.accessExpiresAt,
         serverTimeOffsetSec: state.serverTimeOffsetSec,
-        // status 不持久化，或者初始化为 unknown，由 hydrate 或页面逻辑决定
+        // status 和 _hasHydrated 不持久化
       }),
+      onRehydrateStorage: () => (state) => {
+        // 当 hydration 完成时设置标记
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

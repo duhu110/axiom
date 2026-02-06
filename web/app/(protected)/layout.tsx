@@ -1,17 +1,14 @@
 "use client"
 
-import { usePathname } from "next/navigation"
-// import { useRouter } from "next/navigation"
-// import { useEffect } from "react"
-// import { useAuthStore } from "@/stores/auth-store"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect } from "react"
+import { useAuthStore } from "@/stores/auth-store"
 import { 
   LifeBuoy, 
   Sparkles, 
   BookCopy, 
   Database,
   LibraryBig,
-  BookUp,
-  SquareLibrary,
 } from "lucide-react"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { UnifiedSidebar } from "@/components/unified-sidebar"
@@ -19,24 +16,13 @@ import type { ConversationGroup } from "@/features/agent/components/conversation
 
 /*
  * ============================================================
- * 路由保护说明 (Route Protection)
+ * 路由保护 (Route Protection) - 已启用
  * ============================================================
- * 
- * 要启用路由保护，请取消注释以下内容：
- * 1. 顶部的 useRouter, useEffect, useAuthStore 导入
- * 2. ProtectedLayout 组件中的路由保护逻辑（标记为 ROUTE_PROTECTION_START 和 ROUTE_PROTECTION_END）
  * 
  * 路由保护逻辑会检查用户是否已登录（通过 accessExpiresAt），
  * 如果未登录则重定向到 /login 页面。
  * ============================================================
  */
-
-// Mock user data - replace with actual auth context
-const userData = {
-  name: "shadcn",
-  email: "m@example.com",
-  avatar: "/avatars/shadcn.jpg",
-}
 
 // Navigation items for agent mode
 const agentNavSecondary = [
@@ -59,11 +45,9 @@ const kbNavSecondary = [
   { title: "数据库", url: "/db", icon: Database },
 ]
 
-// Projects for app mode
+// Projects for app mode (知识库模式)
 const projects = [
-  { name: "知识库列表", url: "/kb", icon: LibraryBig },
-  { name: "新增知识库", url: "/kb/new", icon: SquareLibrary },
-  { name: "上传文件", url: "/kb/upload", icon: BookUp },
+  { name: "知识库", url: "/kb", icon: LibraryBig },
 ]
 
 // Static timestamps for mock data (avoid hydration mismatch from Date.now())
@@ -224,23 +208,32 @@ export default function ProtectedLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  // const router = useRouter()
-  // const { accessExpiresAt } = useAuthStore()
+  const router = useRouter()
+  const { user, accessExpiresAt, _hasHydrated } = useAuthStore()
 
-  /* ========== ROUTE_PROTECTION_START ==========
-   * 取消注释以下代码以启用路由保护
-   * 
+  // 路由保护：hydration 完成后，如果未登录则重定向到登录页
   useEffect(() => {
-    if (!accessExpiresAt) {
+    if (_hasHydrated && !accessExpiresAt) {
       router.push('/login')
     }
-  }, [accessExpiresAt, router])
+  }, [_hasHydrated, accessExpiresAt, router])
 
-  // 如果未登录，显示空白或加载状态
+  // 等待 hydration 完成
+  if (!_hasHydrated) {
+    return null
+  }
+
+  // hydration 完成后，如果未登录，显示空白状态（等待重定向）
   if (!accessExpiresAt) {
     return null
   }
-   * ========== ROUTE_PROTECTION_END ========== */
+
+  // 构建用户数据（用于侧边栏显示）
+  const userData = {
+    name: user?.name || user?.phone || '用户',
+    email: user?.phone || '',
+    avatar: user?.avatar || '',
+  }
 
   const isAgentPage = pathname.startsWith("/agent")
   const isKbPage = pathname.startsWith("/kb")

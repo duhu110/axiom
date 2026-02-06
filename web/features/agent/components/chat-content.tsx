@@ -9,8 +9,6 @@ import {
     MoreHorizontal,
     Pencil,
     Plus,
-    ThumbsDown,
-    ThumbsUp,
     Trash,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"

@@ -6,7 +6,8 @@ import {
 	EmptyHeader,
 	EmptyTitle,
 } from "@/components/ui/empty";
-import { Compass, Home } from "lucide-react";
+import { Home } from "lucide-react";
+import Link from "next/link";
 
 /**
  * 404 空页面展示。
@@ -30,9 +31,9 @@ export function NotFoundPage() {
 						<EmptyContent>
 							<div className="flex gap-2">
 								<Button asChild>
-									<a href="/">
+									<Link href="/">
 										<Home /> Go Home
-									</a>
+									</Link>
 								</Button>
 							</div>
 						</EmptyContent>

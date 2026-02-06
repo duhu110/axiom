@@ -238,8 +238,8 @@ async def list_documents(
 
 @router.post(
     "/document/retry",
-    summary="重试失败任务",
-    description="重新处理失败的文档",
+    summary="重试文档处理",
+    description="重新处理失败或卡住的文档",
 )
 async def retry_document(
     data: schemas.DocumentRetryRequest,
@@ -247,7 +247,9 @@ async def retry_document(
     service: Annotated[KBService, Depends(get_kb_service)],
 ):
     """
-    重试失败的文档处理
+    重试文档处理
+    
+    支持重试 failed 状态和 processing 状态（卡住）的文档
     
     - **doc_id**: 文档ID
     """
@@ -260,10 +262,11 @@ async def retry_document(
     if kb is None or kb.user_id != current_user.id:
         raise exceptions.KBPermissionDenied()
     
-    if doc.status != DocumentStatus.FAILED:
-        return success({"message": "Document is not in failed status", "status": doc.status.value})
+    # 只允许重试 failed 或 processing 状态
+    if doc.status not in (DocumentStatus.FAILED, DocumentStatus.PROCESSING):
+        return success({"message": f"Document is in {doc.status.value} status, cannot retry", "status": doc.status.value})
     
-    logger.info(f"Retrying document {data.doc_id}")
+    logger.info(f"Retrying document {data.doc_id} (current status: {doc.status.value})")
     
     # 重置状态并重新触发任务
     await service.update_document_status(data.doc_id, DocumentStatus.PROCESSING)

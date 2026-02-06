@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,7 +29,6 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  useSearchParams();
   const { login } = useAuth(); // 使用 useAuth 中的 login
 
   const [step, setStep] = React.useState<"phone" | "otp">("phone");

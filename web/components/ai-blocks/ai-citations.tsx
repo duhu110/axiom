@@ -304,7 +304,6 @@ function SourcePreview({
 interface CitationItemHeaderProps {
   citation: Citation;
   isOpen: boolean;
-  onToggle: () => void;
 }
 
 function CitationItemHeader({

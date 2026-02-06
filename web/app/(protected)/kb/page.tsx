@@ -1,66 +1,76 @@
 "use client";
 
-import KbList from "@/features/kb/components/kb-list";
+import { useState } from "react";
+import { toast } from "sonner";
+import KBList from "@/features/kb/components/kb-list";
+import KBCreateDialog from "@/features/kb/components/kb-create-dialog";
 import { PageHeader } from "@/components/page-header";
+import { useKBList, useCreateKB, useDeleteKB } from "@/features/kb/hooks/use-kb";
+import type { KBCreateRequest } from "@/features/kb/types";
 
-// Static date for mock data (avoid hydration mismatch)
-const MOCK_DATE = new Date("2026-02-05T00:00:00Z");
+export default function KBListPage() {
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  
+  const { items, loading, error, refetch } = useKBList();
+  const { create, loading: creating } = useCreateKB();
+  const { deleteKB } = useDeleteKB();
 
-export default function Page() {
+  const handleCreate = async (data: KBCreateRequest) => {
+    try {
+      await create(data);
+      toast.success("知识库创建成功");
+      setCreateDialogOpen(false);
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "创建知识库失败");
+      throw err;
+    }
+  };
+
+  const handleDelete = async (kbId: string) => {
+    try {
+      await deleteKB(kbId);
+      toast.success("知识库已删除");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "删除知识库失败");
+      throw err;
+    }
+  };
+
+  if (error) {
+    return (
+      <main className="flex min-h-screen flex-col">
+        <PageHeader title="知识库" />
+        <div className="mt-16"></div>
+        <div className="mx-auto w-full max-w-5xl p-4">
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-destructive">
+            加载失败: {error.message}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <main className="flex h-screen flex-col overflow-hidden">
-      <PageHeader title="Project roadmap discussion" />
+    <main className="flex min-h-screen flex-col">
+      <PageHeader title="知识库" />
       <div className="mt-16"></div>
-      <div className="mx-auto w-full max-w-5xl space-y-8">
-        <KbList
-          projects={[
-            {
-              id: "project-1",
-              name: "Website Redesign",
-              description: "Complete redesign of company website",
-              color: "#3b82f6",
-              members: [
-                {
-                  id: "user-1",
-                  name: "Alice",
-                  avatar:
-                    "https://api.dicebear.com/9.x/glass/svg?seed=alice",
-                },
-              ],
-              defaultModel: "gpt-4",
-              aiUsage: {
-                tokens: 250000,
-                sessions: 89,
-              },
-              createdAt: MOCK_DATE,
-              updatedAt: MOCK_DATE,
-            },
-          ]}
-          currentUserId="user-1"
-          onCreate={async (data) => {
-            /* create project */
-            return {
-              id: "project-new",
-              name: data.name,
-              description: data.description,
-              color: data.color || "#3b82f6",
-              members: [],
-              defaultModel: data.defaultModel,
-              createdAt: MOCK_DATE,
-              updatedAt: MOCK_DATE,
-            };
-          }}
-          onUpdate={async () => {
-            /* update project */
-          }}
-          onDelete={async () => {
-            /* delete project */
-          }}
-          onSelect={() => {
-            /* select project */
-          }}
+      <div className="mx-auto w-full max-w-5xl space-y-8 p-4 pb-12">
+        <KBList
+          knowledgeBases={items}
+          loading={loading}
+          onDelete={handleDelete}
+          onCreateClick={() => setCreateDialogOpen(true)}
         />
       </div>
+
+      <KBCreateDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSubmit={handleCreate}
+        loading={creating}
+      />
     </main>
   );
 }
