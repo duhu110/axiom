@@ -59,6 +59,11 @@ class AgentConfig(BaseModel):
     """Agent 配置"""
     openai_api_key: str = ""  # 请在此处填入 Key
     model: str = "gpt-4o"
+    # DeepSeek 配置
+    deepseek_api_key: str = "sk-69fb5637b84b4934a0c1be8e18f23643"
+    deepseek_base_url: str = "https://api.deepseek.com"
+    deepseek_model: str = "deepseek-chat"
+    deepseek_think_model: str = "deepseek-reasoner"
 
 
 class KBConfig(BaseModel):
