@@ -9,8 +9,7 @@ from uuid import UUID
 
 from langchain_core.vectorstores import VectorStoreRetriever
 
-from knowledgebase.services.vector_store import VectorStoreService, get_kb_connection_string
-from knowledgebase.core.embedding import EmbeddingService
+from knowledgebase.services.vector_store import VectorStoreService
 from services.logging_service import logger
 
 
@@ -105,4 +104,52 @@ class RetrieverFactory:
         
         logger.debug(f"Created multi-kb retriever for {len(kb_ids)} knowledge bases")
         
+        return retriever
+
+    @classmethod
+    def create_accessible_retriever(
+        cls,
+        kb_ids: list[UUID],
+        embedding_model: str = None,
+        search_type: Literal["similarity", "mmr", "similarity_score_threshold"] = "similarity",
+        k: int = 4,
+        score_threshold: Optional[float] = None,
+        fetch_k: int = 20,
+        lambda_mult: float = 0.5,
+    ) -> VectorStoreRetriever:
+        """
+        创建“可访问知识库集合”检索器。
+
+        适用于默认检索范围：当前用户私有库 + 全部公开库。
+        """
+        vector_store = VectorStoreService.get_vector_store(embedding_model=embedding_model)
+
+        if kb_ids:
+            kb_filter: dict = {"kb_id": {"$in": [str(kb_id) for kb_id in kb_ids]}}
+        else:
+            # 空集合时给一个不可能命中的过滤器，避免误扫全库
+            kb_filter = {"kb_id": {"$eq": "__none__"}}
+
+        search_kwargs = {
+            "k": k,
+            "filter": kb_filter,
+        }
+
+        if search_type == "mmr":
+            search_kwargs["fetch_k"] = fetch_k
+            search_kwargs["lambda_mult"] = lambda_mult
+        elif search_type == "similarity_score_threshold" and score_threshold is not None:
+            search_kwargs["score_threshold"] = score_threshold
+
+        retriever = vector_store.as_retriever(
+            search_type=search_type,
+            search_kwargs=search_kwargs,
+        )
+
+        logger.debug(
+            "Created accessible retriever for %s knowledge bases with type=%s, k=%s",
+            len(kb_ids),
+            search_type,
+            k,
+        )
         return retriever

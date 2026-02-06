@@ -7,7 +7,7 @@
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -126,6 +126,24 @@ class KBService:
         items = list(result.scalars().all())
         
         return items, total
+
+    async def get_accessible_kb_ids(self, user_id: UUID) -> list[UUID]:
+        """
+        获取用户可检索的知识库 ID 列表。
+
+        默认访问范围：
+        1. 当前用户的私有知识库
+        2. 所有公开知识库
+        """
+        result = await self.db.execute(
+            select(KnowledgeBase.id).where(
+                or_(
+                    KnowledgeBase.user_id == user_id,
+                    KnowledgeBase.visibility == KBVisibility.PUBLIC,
+                )
+            )
+        )
+        return list(result.scalars().all())
     
     async def update_kb(
         self, 
