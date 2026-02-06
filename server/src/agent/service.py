@@ -16,6 +16,7 @@ from .dependencies import get_checkpointer, get_store
 from .subagents import QAAgent, RAGAgent, SQLAgent
 from .router_graph import route_by_llm
 from services.logging_service import logger
+from llm_usage.service import record_usage
 
 
 class AgentService:
@@ -107,16 +108,41 @@ class AgentService:
             "metadata": {"user_id": user_id, "kb_id": kb_id},
         }
 
+        # 用于收集最终的usage信息
+        final_usage = None
+        final_model_name = None
+
         async for event in app.astream_events(
             {"messages": input_messages},
             config=config,
             version="v2",
         ):
             try:
-                logger.debug(f"Agent event: {event.get('event')} name={event.get('name')}")
+                event_name = event.get('event')
+                logger.debug(f"Agent event: {event_name} name={event.get('name')}")
+
+                # 监听模型输出结束事件，记录usage
+                if event_name == "on_chat_model_end":
+                    final_usage = event.get('data', {}).get('usage')
+                    final_model_name = event.get('data', {}).get('model_name', 'unknown')
+                    logger.info(f"Captured LLM usage: model={final_model_name}, usage={final_usage}")
+
             except Exception as exc:
                 logger.warning(f"log agent event failed: {exc}")
 
             chunk = convert_to_vercel_sse(event)
             if chunk:
                 yield chunk
+
+        # 流式结束后，记录usage到数据库
+        if final_usage and user_id:
+            try:
+                logger.info(f"Recording LLM usage for user_id={user_id}, model={final_model_name}")
+                await record_usage(
+                    user_id=user_id,
+                    model_name=final_model_name,
+                    usage=final_usage,
+                )
+                logger.info("LLM usage record saved successfully")
+            except Exception as exc:
+                logger.warning(f"Failed to record LLM usage: {exc}")
