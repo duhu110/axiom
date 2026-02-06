@@ -88,7 +88,26 @@
             const entry = document.createElement('div');
             entry.className = 'log-entry';
             const time = new Date().toLocaleTimeString();
-            entry.innerHTML = `<span class="log-time">[${time}]</span>${text}`;
+            // 使用 textContent 避免 HTML 注入，并用 createTextNode 保留原始格式
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'log-time';
+            timeSpan.textContent = `[${time}] `;
+            entry.appendChild(timeSpan);
+            
+            // 对 SSE 数据进行颜色标记
+            const contentSpan = document.createElement('span');
+            if (text.includes('2:')) {
+                contentSpan.style.color = '#9966cc';  // 紫色 - 推理内容
+            } else if (text.includes('0:')) {
+                contentSpan.style.color = '#006600';  // 绿色 - 正文
+            } else if (text.includes('9:')) {
+                contentSpan.style.color = '#0066cc';  // 蓝色 - 工具调用
+            } else if (text.includes('a:')) {
+                contentSpan.style.color = '#cc6600';  // 橙色 - 工具结果
+            }
+            contentSpan.textContent = text;
+            entry.appendChild(contentSpan);
+            
             logsContainer.appendChild(entry);
             logsContainer.parentElement.scrollTop = logsContainer.parentElement.scrollHeight;
         }
@@ -146,12 +165,49 @@
                     
                     for (const line of lines) {
                         if (line.startsWith('0:')) {
-                            // 0:"text" -> text
+                            // 0:"text" -> text content
                             try {
                                 const text = JSON.parse(line.substring(2));
                                 agentDiv.textContent += text;
                             } catch (e) {
-                                console.error('Error parsing JSON:', e);
+                                console.error('Error parsing text JSON:', e);
+                            }
+                        } else if (line.startsWith('2:')) {
+                            // 2:"reasoning" -> reasoning content (DeepSeek)
+                            try {
+                                const reasoning = JSON.parse(line.substring(2));
+                                // 显示推理内容（灰色斜体）
+                                const reasoningSpan = document.createElement('span');
+                                reasoningSpan.style.color = '#888';
+                                reasoningSpan.style.fontStyle = 'italic';
+                                reasoningSpan.textContent = reasoning;
+                                agentDiv.appendChild(reasoningSpan);
+                            } catch (e) {
+                                console.error('Error parsing reasoning JSON:', e);
+                            }
+                        } else if (line.startsWith('9:')) {
+                            // 9:{toolCall} -> tool call
+                            try {
+                                const toolCall = JSON.parse(line.substring(2));
+                                const toolSpan = document.createElement('div');
+                                toolSpan.style.color = '#0066cc';
+                                toolSpan.style.fontSize = '12px';
+                                toolSpan.textContent = `[Tool: ${toolCall.toolName}]`;
+                                agentDiv.appendChild(toolSpan);
+                            } catch (e) {
+                                console.error('Error parsing tool call JSON:', e);
+                            }
+                        } else if (line.startsWith('a:')) {
+                            // a:{toolResult} -> tool result
+                            try {
+                                const toolResult = JSON.parse(line.substring(2));
+                                const resultSpan = document.createElement('div');
+                                resultSpan.style.color = '#009900';
+                                resultSpan.style.fontSize = '12px';
+                                resultSpan.textContent = `[Result: ${toolResult.result.substring(0, 100)}...]`;
+                                agentDiv.appendChild(resultSpan);
+                            } catch (e) {
+                                console.error('Error parsing tool result JSON:', e);
                             }
                         }
                     }

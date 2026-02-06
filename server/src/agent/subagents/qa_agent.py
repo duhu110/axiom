@@ -10,7 +10,6 @@ QA Agent - 通用问答 Agent
 from typing import Annotated, List
 from typing_extensions import TypedDict
 
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, AIMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
 from langgraph.graph import StateGraph, START
@@ -20,6 +19,7 @@ from langgraph.store.base import BaseStore
 from langgraph.graph.state import CompiledStateGraph
 
 from config import settings
+from ..llm import DeepSeekChat
 from ..tools import get_current_weather, upsert_memory
 from llm_usage.service import record_usage_from_response
 from services.logging_service import logger
@@ -28,20 +28,6 @@ from services.logging_service import logger
 class QAAgentState(TypedDict):
     """QA Agent 状态"""
     messages: Annotated[List[BaseMessage], add_messages]
-
-
-class DeepSeekReasonerChatOpenAI(ChatOpenAI):
-    """
-    DeepSeek Reasoner 适配器
-    处理 reasoning_content 字段，避免 API 400 错误
-    """
-    def _get_request_payload(self, input_, *, stop=None, **kwargs):
-        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
-        messages = payload.get("messages", [])
-        for message in messages:
-            if message.get("role") == "assistant" and "reasoning_content" not in message:
-                message["reasoning_content"] = ""
-        return payload
 
 
 class QAAgent:
@@ -64,7 +50,7 @@ class QAAgent:
         """
         # 初始化 LLM
         if llm is None:
-            self.llm = DeepSeekReasonerChatOpenAI(
+            self.llm = DeepSeekChat(
                 model=settings.agent.deepseek_think_model,
                 api_key=settings.agent.deepseek_api_key,
                 base_url=settings.agent.deepseek_base_url,

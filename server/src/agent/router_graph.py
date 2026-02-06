@@ -3,18 +3,17 @@ Router Graph - 路由图
 
 负责：
 1. 根据用户输入判断路由目标 (QA / RAG / SQL)
-2. 分发请求到对应子 Agent
-3. 返回子 Agent 的响应
+2. 通过条件边分发到对应子 Agent
+3. 事件流自动透传
 
 注意：
 - Router 只做路由，不注入记忆
 - Router 不包含业务逻辑
+- 使用条件边实现路由，确保事件流正确透传
 """
 from typing import Dict, Literal
-import re
 
 from langchain_core.messages import BaseMessage
-from langchain_core.runnables.config import RunnableConfig
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
@@ -72,14 +71,25 @@ def _route_by_keywords(text: str) -> Literal["qa", "rag", "sql"]:
     return "qa"
 
 
+def _route_condition(state: RouterState) -> Literal["qa", "rag", "sql"]:
+    """
+    路由条件函数
+    
+    用于条件边，根据 state.route 返回下一个节点名称
+    """
+    route = state.get("route", "qa")
+    logger.info(f"RouterGraph: routing to '{route}' agent")
+    return route
+
+
 class RouterGraph:
     """
     路由图
     
-    图结构: START → route → dispatch → END
+    图结构: 
+        START → route_node → (条件边) → qa/rag/sql → END
     
-    - route: 根据关键词判断路由目标
-    - dispatch: 调用对应子 Agent 并返回结果
+    使用条件边实现路由分发，确保子 Agent 的事件流正确透传
     """
     
     def __init__(self, subapps: Dict[str, CompiledStateGraph]):
@@ -90,24 +100,44 @@ class RouterGraph:
             subapps: 子 Agent 映射 {"qa": qa_app, "rag": rag_app, "sql": sql_app}
         """
         self.subapps = subapps
-        
-        # 构建图
-        self.workflow = StateGraph(RouterState)
-        
-        # 添加节点
-        self.workflow.add_node("route", self._route_node)
-        self.workflow.add_node("dispatch", self._dispatch_node)
-        
-        # 添加边
-        self.workflow.add_edge(START, "route")
-        self.workflow.add_edge("route", "dispatch")
-        self.workflow.add_edge("dispatch", END)
+        self._workflow = None
     
-    async def _route_node(self, state: RouterState, config: RunnableConfig) -> dict:
+    def _build_workflow(self) -> StateGraph:
+        """构建工作流图"""
+        workflow = StateGraph(RouterState)
+        
+        # 添加路由节点
+        workflow.add_node("route_node", self._route_node)
+        
+        # 添加子 Agent 作为子图节点
+        for name, subapp in self.subapps.items():
+            workflow.add_node(name, subapp)
+        
+        # 添加边：START → route_node
+        workflow.add_edge(START, "route_node")
+        
+        # 添加条件边：route_node → qa/rag/sql
+        workflow.add_conditional_edges(
+            "route_node",
+            _route_condition,
+            {
+                "qa": "qa",
+                "rag": "rag",
+                "sql": "sql",
+            }
+        )
+        
+        # 添加边：所有子 Agent → END
+        for name in self.subapps.keys():
+            workflow.add_edge(name, END)
+        
+        return workflow
+    
+    async def _route_node(self, state: RouterState) -> dict:
         """
         路由节点
         
-        根据用户输入判断路由目标
+        根据用户输入判断路由目标，设置 state.route
         """
         messages = state.get("messages", [])
         user_text = _get_last_user_message(messages)
@@ -118,45 +148,19 @@ class RouterGraph:
         
         return {"route": route}
     
-    async def _dispatch_node(self, state: RouterState, config: RunnableConfig) -> dict:
-        """
-        分发节点
-        
-        调用对应子 Agent 并返回结果
-        """
-        route = state.get("route", "qa")
-        messages = state.get("messages", [])
-        
-        subapp = self.subapps.get(route)
-        if subapp is None:
-            logger.warning(f"RouterGraph: unknown route '{route}', fallback to 'qa'")
-            subapp = self.subapps.get("qa")
-        
-        logger.info(f"RouterGraph: dispatching to '{route}' agent")
-        
-        # 调用子 Agent
-        result = await subapp.ainvoke(
-            {"messages": messages},
-            config=config
-        )
-        
-        # 返回子 Agent 的 messages
-        return {"messages": result.get("messages", [])}
-    
     def compile(self, checkpointer=None, store=None) -> CompiledStateGraph:
         """
         编译并返回路由图
         
-        注意：Router 本身不需要 checkpointer 和 store
-        这里接收参数是为了保持接口一致性
-        
         Args:
-            checkpointer: 检查点服务（不使用）
-            store: 存储服务（不使用）
+            checkpointer: 检查点服务
+            store: 存储服务
             
         Returns:
-            编译后的 CompiledGraph
+            编译后的 CompiledStateGraph
         """
-        # Router 不使用 checkpointer 和 store
-        # 状态持久化由子 Agent 负责
-        return self.workflow.compile()
+        workflow = self._build_workflow()
+        
+        # Router 可以使用 checkpointer 来保存路由状态
+        # store 主要由子 Agent 使用
+        return workflow.compile(checkpointer=checkpointer, store=store)
