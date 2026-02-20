@@ -28,6 +28,7 @@ interface AgentState {
   isStreaming: boolean
   error?: string
   abortController?: AbortController
+  editingMessageId?: string // 正在编辑的消息 ID
 
   // 调试事件流（所有原始事件）
   debugEvents: DebugEvent[]
@@ -41,6 +42,11 @@ interface AgentState {
   retryLastMessage: () => Promise<void>
   cancelRequest: () => void
   clearError: () => void
+  updateMessage: (messageId: string, content: string) => void
+  deleteMessage: (messageId: string) => void
+  startEditing: (messageId: string) => void
+  stopEditing: () => void
+  resubmitEditedMessage: (messageId: string, newContent: string) => Promise<void>
 }
 
 export const useAgentStore = create<AgentState>()(
@@ -254,6 +260,49 @@ export const useAgentStore = create<AgentState>()(
 
       // 清除错误
       clearError: () => set({ error: undefined }),
+
+      // 更新消息内容
+      updateMessage: (messageId: string, content: string) => {
+        set(state => ({
+          messages: state.messages.map(msg =>
+            msg.id === messageId ? { ...msg, content } : msg
+          ),
+        }))
+      },
+
+      // 删除消息
+      deleteMessage: (messageId: string) => {
+        set(state => ({
+          messages: state.messages.filter(msg => msg.id !== messageId),
+        }))
+      },
+
+      // 开始编辑
+      startEditing: (messageId: string) => {
+        set({ editingMessageId: messageId })
+      },
+
+      // 停止编辑
+      stopEditing: () => {
+        set({ editingMessageId: undefined })
+      },
+
+      // 重新提交编辑后的消息
+      resubmitEditedMessage: async (messageId: string, newContent: string) => {
+        const { messages } = get()
+        const msgIndex = messages.findIndex(m => m.id === messageId)
+        if (msgIndex === -1) return
+
+        // 更新消息内容
+        get().updateMessage(messageId, newContent)
+
+        // 移除该消息之后的所有消息
+        const messagesToKeep = messages.slice(0, msgIndex + 1)
+        set({ messages: messagesToKeep, editingMessageId: undefined })
+
+        // 重新发送
+        await get().sendMessage(newContent)
+      },
     }),
     {
       name: 'agent-storage',

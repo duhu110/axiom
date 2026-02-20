@@ -133,6 +133,7 @@ export function ChatContent() {
                 if (message.role === "user") {
                   return <UserMessage
                     key={message.id}
+                    id={message.id}
                     content={message.content}
                   />
                 }
