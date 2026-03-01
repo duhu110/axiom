@@ -43,3 +43,26 @@ class LLMUsageSummaryItem(BaseModel):
 
 class LLMUsageSummaryResponse(BaseModel):
     items: list[LLMUsageSummaryItem]
+
+
+# LLM 模型相关 Schema
+
+
+class LLMModelResponse(BaseModel):
+    """LLM 模型响应"""
+    id: UUID
+    provider: str
+    model_name: str
+    support_reasoning: bool
+    support_image: bool
+    support_file: bool
+    support_batch: bool
+    is_default: bool
+    sort_order: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LLMModelListResponse(BaseModel):
+    """LLM 模型列表响应"""
+    items: list[LLMModelResponse]

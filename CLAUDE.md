@@ -127,11 +127,32 @@ docker-compose down
 2. **State Management**: Zustand stores in `stores/`
 3. **Components**: Feature-based organization in `features/` directory
 4. **Styling**: Tailwind CSS v4 with shadcn/ui components
+5. **UI Centering**: Use `items-center` for vertical alignment and `justify-center` for horizontal. Do not mix these up.
 
 ### Database
 - **Three separate databases** for different concerns
 - **Alembic** for all schema changes
 - **Migration files** in `server/alembic/versions/`
+
+## Editing Guidelines
+
+### Scope Management
+When user explicitly specifies a line range (e.g., 'lines 50-56'), NEVER create new files or modify other lines. Only edit the specified range.
+
+## Implementation Standards
+
+### Functionality First
+Always implement actual functionality on first attempt, not console.log placeholders or TODO comments.
+
+## Code Quality
+
+### Lint/Format Error Handling
+When fixing lint/formatting errors with both errors AND warnings present, always clarify if user wants both fixed or just errors.
+
+## Troubleshooting Workflow
+
+### Issue Confirmation
+Before starting PowerShell conversions or major refactors, confirm the actual issue with the user first.
 
 ## Key Technologies
 

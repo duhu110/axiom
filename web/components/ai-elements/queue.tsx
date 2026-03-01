@@ -1,6 +1,7 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
+import type { ComponentProps } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -10,7 +11,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon, PaperclipIcon } from "lucide-react";
-import type { ComponentProps } from "react";
 
 export interface QueueMessagePart {
   type: string;
@@ -152,7 +152,6 @@ export const QueueItemImage = ({
   className,
   ...props
 }: QueueItemImageProps) => (
-  // biome-ignore lint/a11y/no-img-element: Dynamic attachment images
   <img
     alt=""
     className={cn("h-8 w-8 rounded border object-cover", className)}

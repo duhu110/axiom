@@ -108,6 +108,41 @@ def convert_to_vercel_sse(event: dict) -> str:
         logger.info(f"Tool Call End: {tool_name} result={output}")
         return f'a:{_safe_json_dumps(tool_result)}\n' + debug_output
 
+    # 处理 RAG 检索结果 (r: retrieval_result)
+    elif kind == "on_chain_end" and event.get("name") == "search":
+        data = event.get("data", {})
+        output = data.get("output", {})
+        documents = output.get("documents", [])
+
+        # 从 input 获取查询信息（因为 output 只包含 documents）
+        input_data = data.get("input", {})
+
+        # 构建检索结果事件
+        retrieval_result = {
+            "documents": [],
+        }
+
+        # 处理每个文档，提取关键信息
+        for doc in documents:
+            # Document 对象可能有 page_content 和 metadata 属性
+            # 或者是字符串表示（被序列化时）
+            if hasattr(doc, "page_content"):
+                content = doc.page_content[:500]  # 限制内容长度
+                metadata = getattr(doc, "metadata", {})
+            else:
+                # 如果是字符串或其他格式，尝试转换
+                content = str(doc)[:500]
+                metadata = {}
+
+            doc_info = {
+                "content": content,
+                "metadata": metadata,
+            }
+            retrieval_result["documents"].append(doc_info)
+
+        logger.info(f"Retrieval Result: {len(documents)} documents found")
+        return f'r:{_safe_json_dumps(retrieval_result)}\n' + debug_output
+
     # 其余事件全部透传，方便在测试页中查看完整链路
     logger.debug(f"SSE passthrough event: {kind} name={event.get('name')}")
     return debug_output

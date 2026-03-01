@@ -108,12 +108,19 @@ export async function* chatStream(
   const decoder = new TextDecoder()
   let buffer = ''
 
+  console.log('[Agent SSE] Stream started')
+
   try {
     while (true) {
       const { done, value } = await reader.read()
-      if (done) break
+      if (done) {
+        console.log('[Agent SSE] Stream ended')
+        break
+      }
 
-      buffer += decoder.decode(value, { stream: true })
+      const chunk = decoder.decode(value, { stream: true })
+      console.log('[Agent SSE] Received chunk:', chunk.substring(0, 100))
+      buffer += chunk
 
       // 按行分割处理
       const lines = buffer.split('\n')
@@ -122,6 +129,7 @@ export async function* chatStream(
       for (const line of lines) {
         const event = parseSSELine(line)
         if (event) {
+          console.log('[Agent SSE] Parsed event:', event.type)
           yield event
         }
       }

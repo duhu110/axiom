@@ -12,16 +12,15 @@ from typing_extensions import TypedDict
 
 from langchain_core.messages import BaseMessage, AIMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
+from langchain_core.language_models import BaseChatModel
 from langgraph.graph import StateGraph, START
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.store.base import BaseStore
 from langgraph.graph.state import CompiledStateGraph
 
-from config import settings
-from ..llm import DeepSeekChat
 from ..tools import get_current_weather, upsert_memory
-from llm_usage.service import record_usage_from_response
+from llm.service import record_usage_from_response
 from services.logging_service import logger
 
 
@@ -33,31 +32,25 @@ class QAAgentState(TypedDict):
 class QAAgent:
     """
     QA Agent - 通用问答
-    
+
     继承自原有单一 Agent 的完整功能：
-    - DeepSeek Reasoner LLM
+    - LLM 实例（外部传入）
     - 工具绑定（天气、记忆）
     - 长期记忆注入
     - usage 记录
     """
-    
-    def __init__(self, llm=None):
+
+    def __init__(self, llm: BaseChatModel):
         """
         初始化 QA Agent
-        
+
         Args:
-            llm: 可选的 LLM 实例，为空则使用默认 DeepSeek 配置
+            llm: LLM 实例（必须由外部传入）
         """
-        # 初始化 LLM
         if llm is None:
-            self.llm = DeepSeekChat(
-                model=settings.agent.deepseek_think_model,
-                api_key=settings.agent.deepseek_api_key,
-                base_url=settings.agent.deepseek_base_url,
-            )
-        else:
-            self.llm = llm
-        
+            raise ValueError("QAAgent requires an LLM instance")
+        self.llm = llm
+
         # 绑定工具
         self.tools = [get_current_weather, upsert_memory]
         self.llm_with_tools = self.llm.bind_tools(self.tools)

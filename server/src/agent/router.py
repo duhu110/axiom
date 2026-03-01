@@ -22,7 +22,7 @@ async def chat_endpoint(
 ):
     # 如果请求中没有 session_id，使用固定 User ID 测试
     session_id = request.session_id or "f8133b8e-c488-45ee-82d3-466deb34768e"
-    response = await service.chat(request.query, request.chat_history, session_id, kb_id=request.kb_id)
+    response = await service.chat(request.query, request.chat_history, session_id, kb_id=request.kb_id, model_id=request.model_id)
     return {"answer": response}
 
 @router.post("/chat/stream")
@@ -36,13 +36,13 @@ async def chat_stream_endpoint(
     """
     # 使用前端传递的 session_id，若无则生成默认
     session_id = request.session_id or "default-session"
-    
+
     # 使用当前登录用户的 ID
     user_id = str(current_user.id)
-    
-    # 传递 user_id 到 service (通过 metadata)
+
+    # 传递 user_id 和 model_id 到 service (通过 metadata)
     return StreamingResponse(
-        service.chat_stream(request.query, request.chat_history, session_id, user_id=user_id, kb_id=request.kb_id),
+        service.chat_stream(request.query, request.chat_history, session_id, user_id=user_id, kb_id=request.kb_id, model_id=request.model_id),
         media_type="text/event-stream",
         headers={"X-Vercel-AI-Data-Stream": "v1"}
     )

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import async_session_scope
 from services.logging_service import logger
-from llm_usage.models import LLMUsage
+from llm.models import LLMModel, LLMUsage
 
 
 def _normalize_usage(usage: dict | None) -> tuple[Optional[int], Optional[int], Optional[int]]:
@@ -174,3 +174,39 @@ async def summary_usage(
         )
 
     return items
+
+
+async def get_available_models(db: AsyncSession) -> list[LLMModel]:
+    """
+    获取所有可用的模型列表（仅返回已启用的模型）
+
+    Args:
+        db: 数据库会话
+
+    Returns:
+        可用模型列表，按 sort_order 排序
+    """
+    stmt = select(LLMModel).where(
+        LLMModel.is_enabled == True
+    ).order_by(LLMModel.sort_order, LLMModel.model_name)
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_default_model(db: AsyncSession) -> LLMModel | None:
+    """
+    获取默认模型配置
+
+    Args:
+        db: 数据库会话
+
+    Returns:
+        默认模型配置，不存在时返回 None
+    """
+    stmt = select(LLMModel).where(
+        LLMModel.is_default == True,
+        LLMModel.is_enabled == True
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()

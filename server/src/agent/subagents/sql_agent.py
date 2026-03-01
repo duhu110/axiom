@@ -8,6 +8,7 @@ from typing_extensions import TypedDict
 
 from langchain_core.messages import BaseMessage, AIMessage
 from langchain_core.runnables.config import RunnableConfig
+from langchain_core.language_models import BaseChatModel
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
@@ -23,16 +24,24 @@ class SQLAgentState(TypedDict):
 class SQLAgent:
     """
     SQL Agent - 数据库查询 (Stub 版本)
-    
+
     TODO: 后续实现：
     - SQL 生成
     - 查询执行
     - 结果格式化
     - 安全校验
     """
-    
-    def __init__(self):
-        """初始化 SQL Agent"""
+
+    def __init__(self, llm: BaseChatModel | None = None):
+        """
+        初始化 SQL Agent
+
+        Args:
+            llm: LLM 实例（当前 stub 版本不使用，保留参数以保持接口一致性）
+        """
+        # 暂存 LLM 引用，后续实现时使用
+        self.llm = llm
+
         # 构建图
         self.workflow = StateGraph(SQLAgentState)
         

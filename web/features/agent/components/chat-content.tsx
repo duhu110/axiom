@@ -7,6 +7,7 @@ import { UserMessage } from "./user-message"
 import { ErrorMessage } from "./error-message"
 import { SettingsDialog } from "./settings-dialog"
 import { DebugPanel } from "./debug-panel"
+import { ModelSelectorButton } from "./model-selector-button"
 import {
   ChatContainerContent,
   ChatContainerRoot,
@@ -66,13 +67,6 @@ export function ChatContent() {
     const query = prompt.trim()
     setPrompt("")
     sendMessage(query)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
-    }
   }
 
   return (
@@ -203,7 +197,6 @@ export function ChatContent() {
               <PromptInputTextarea
                 placeholder="输入你的问题..."
                 className="min-h-[44px] pt-3 pl-4 text-base leading-[1.3] sm:text-base md:text-base"
-                onKeyDown={handleKeyDown}
               />
 
               <PromptInputActions className="mt-5 flex w-full items-center justify-between gap-2 px-3 pb-3">
@@ -219,6 +212,10 @@ export function ChatContent() {
                       <Globe size={18} />
                       搜索
                     </Button>
+                  </PromptInputAction>
+
+                  <PromptInputAction tooltip="选择模型">
+                    <ModelSelectorButton />
                   </PromptInputAction>
 
                   <PromptInputAction tooltip="更多操作">

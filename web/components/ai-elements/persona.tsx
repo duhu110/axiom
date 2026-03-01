@@ -1,15 +1,16 @@
 "use client";
 
+import type { RiveParameters } from "@rive-app/react-webgl2";
+import type { FC, ReactNode } from "react";
+
 import { cn } from "@/lib/utils";
 import {
-  type RiveParameters,
   useRive,
   useStateMachineInput,
   useViewModel,
   useViewModelInstance,
   useViewModelInstanceColor,
 } from "@rive-app/react-webgl2";
-import type { FC, ReactNode } from "react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 export type PersonaState =
@@ -35,41 +36,41 @@ interface PersonaProps {
 const stateMachine = "default";
 
 const sources = {
-  obsidian: {
-    source:
-      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/obsidian-2.0.riv",
-    dynamicColor: true,
-    hasModel: true,
-  },
-  mana: {
-    source:
-      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/mana-2.0.riv",
-    dynamicColor: false,
-    hasModel: true,
-  },
-  opal: {
-    source:
-      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/orb-1.2.riv",
-    dynamicColor: false,
-    hasModel: false,
-  },
-  halo: {
-    source:
-      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/halo-2.0.riv",
-    dynamicColor: true,
-    hasModel: true,
-  },
-  glint: {
-    source:
-      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/glint-2.0.riv",
-    dynamicColor: true,
-    hasModel: true,
-  },
   command: {
+    dynamicColor: true,
+    hasModel: true,
     source:
       "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/command-2.0.riv",
+  },
+  glint: {
     dynamicColor: true,
     hasModel: true,
+    source:
+      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/glint-2.0.riv",
+  },
+  halo: {
+    dynamicColor: true,
+    hasModel: true,
+    source:
+      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/halo-2.0.riv",
+  },
+  mana: {
+    dynamicColor: false,
+    hasModel: true,
+    source:
+      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/mana-2.0.riv",
+  },
+  obsidian: {
+    dynamicColor: true,
+    hasModel: true,
+    source:
+      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/obsidian-2.0.riv",
+  },
+  opal: {
+    dynamicColor: false,
+    hasModel: false,
+    source:
+      "https://ejiidnob33g9ap1r.public.blob.vercel-storage.com/orb-1.2.riv",
   },
 };
 
@@ -100,8 +101,8 @@ const useTheme = (enabled: boolean) => {
     });
 
     observer.observe(document.documentElement, {
-      attributes: true,
       attributeFilter: ["class"],
+      attributes: true,
     });
 
     // Watch for OS-level theme changes
@@ -170,8 +171,6 @@ const PersonaWithoutModel = memo(
 
 PersonaWithoutModel.displayName = "PersonaWithoutModel";
 
-// Rive API requires direct value mutation
- 
 export const Persona: FC<PersonaProps> = memo(
   ({
     variant = "obsidian",
@@ -194,19 +193,22 @@ export const Persona: FC<PersonaProps> = memo(
     const callbacksRef = useRef({
       onLoad,
       onLoadError,
-      onReady,
       onPause,
       onPlay,
+      onReady,
       onStop,
     });
-    callbacksRef.current = {
-      onLoad,
-      onLoadError,
-      onReady,
-      onPause,
-      onPlay,
-      onStop,
-    };
+
+    useEffect(() => {
+      callbacksRef.current = {
+        onLoad,
+        onLoadError,
+        onPause,
+        onPlay,
+        onReady,
+        onStop,
+      };
+    }, [onLoad, onLoadError, onPause, onPlay, onReady, onStop]);
 
     const stableCallbacks = useMemo(
       () => ({
@@ -218,11 +220,11 @@ export const Persona: FC<PersonaProps> = memo(
           callbacksRef.current.onLoadError?.(
             err
           )) as RiveParameters["onLoadError"],
-        onReady: () => callbacksRef.current.onReady?.(),
         onPause: ((event) =>
           callbacksRef.current.onPause?.(event)) as RiveParameters["onPause"],
         onPlay: ((event) =>
           callbacksRef.current.onPlay?.(event)) as RiveParameters["onPlay"],
+        onReady: () => callbacksRef.current.onReady?.(),
         onStop: ((event) =>
           callbacksRef.current.onStop?.(event)) as RiveParameters["onStop"],
       }),
@@ -230,15 +232,15 @@ export const Persona: FC<PersonaProps> = memo(
     );
 
     const { rive, RiveComponent } = useRive({
-      src: source.source,
-      stateMachines: stateMachine,
       autoplay: true,
       onLoad: stableCallbacks.onLoad,
       onLoadError: stableCallbacks.onLoadError,
-      onRiveReady: stableCallbacks.onReady,
       onPause: stableCallbacks.onPause,
       onPlay: stableCallbacks.onPlay,
+      onRiveReady: stableCallbacks.onReady,
       onStop: stableCallbacks.onStop,
+      src: source.source,
+      stateMachines: stateMachine,
     });
 
     const listeningInput = useStateMachineInput(
@@ -250,29 +252,20 @@ export const Persona: FC<PersonaProps> = memo(
     const speakingInput = useStateMachineInput(rive, stateMachine, "speaking");
     const asleepInput = useStateMachineInput(rive, stateMachine, "asleep");
 
-    // Rive API requires direct value mutation on state machine inputs
-    /* eslint-disable react-hooks/immutability -- Rive API requires direct mutation */
-    useEffect(
-      () => {
-        const updateInputs = () => {
-          if (listeningInput) {
-            listeningInput.value = state === "listening";
-          }
-          if (thinkingInput) {
-            thinkingInput.value = state === "thinking";
-          }
-          if (speakingInput) {
-            speakingInput.value = state === "speaking";
-          }
-          if (asleepInput) {
-            asleepInput.value = state === "asleep";
-          }
-        };
-        updateInputs();
-      },
-      [state, listeningInput, thinkingInput, speakingInput, asleepInput]
-    );
-    /* eslint-enable react-hooks/immutability */
+    useEffect(() => {
+      if (listeningInput) {
+        listeningInput.value = state === "listening";
+      }
+      if (thinkingInput) {
+        thinkingInput.value = state === "thinking";
+      }
+      if (speakingInput) {
+        speakingInput.value = state === "speaking";
+      }
+      if (asleepInput) {
+        asleepInput.value = state === "asleep";
+      }
+    }, [state, listeningInput, thinkingInput, speakingInput, asleepInput]);
 
     const Component = source.hasModel ? PersonaWithModel : PersonaWithoutModel;
 

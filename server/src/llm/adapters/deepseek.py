@@ -14,12 +14,12 @@ from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackMana
 class DeepSeekChat(ChatOpenAI):
     """
     DeepSeek Chat 适配器
-    
+
     扩展 ChatOpenAI 以支持：
     1. reasoning_content 流式输出
     2. 历史消息中 reasoning_content 字段补齐
     """
-    
+
     def _get_request_payload(self, input_, *, stop=None, **kwargs):
         """补齐历史消息中的 reasoning_content 字段，避免 API 400 错误"""
         payload = super()._get_request_payload(input_, stop=stop, **kwargs)
@@ -28,7 +28,7 @@ class DeepSeekChat(ChatOpenAI):
             if message.get("role") == "assistant" and "reasoning_content" not in message:
                 message["reasoning_content"] = ""
         return payload
-    
+
     def _stream(
         self,
         messages: List[BaseMessage],
@@ -39,15 +39,15 @@ class DeepSeekChat(ChatOpenAI):
         """同步流式生成，支持 reasoning_content"""
         payload = self._get_request_payload(messages, stop=stop, **kwargs)
         payload["stream"] = True
-        
+
         response = self.client.create(**payload)
-        
+
         for chunk in response:
             if not chunk.choices:
                 continue
-                
+
             delta = chunk.choices[0].delta
-            
+
             # 构建 additional_kwargs，包含 reasoning_content
             additional_kwargs = {}
             if hasattr(delta, "reasoning_content") and delta.reasoning_content:
@@ -65,7 +65,7 @@ class DeepSeekChat(ChatOpenAI):
                     }
                     for tc in delta.tool_calls
                 ]
-            
+
             # 创建 AIMessageChunk
             message_chunk = AIMessageChunk(
                 content=delta.content or "",
@@ -92,7 +92,7 @@ class DeepSeekChat(ChatOpenAI):
                 )
 
             yield gen_chunk
-    
+
     async def _astream(
         self,
         messages: List[BaseMessage],
@@ -103,15 +103,15 @@ class DeepSeekChat(ChatOpenAI):
         """异步流式生成，支持 reasoning_content"""
         payload = self._get_request_payload(messages, stop=stop, **kwargs)
         payload["stream"] = True
-        
+
         response = await self.async_client.create(**payload)
-        
+
         async for chunk in response:
             if not chunk.choices:
                 continue
-                
+
             delta = chunk.choices[0].delta
-            
+
             # 构建 additional_kwargs，包含 reasoning_content
             additional_kwargs = {}
             if hasattr(delta, "reasoning_content") and delta.reasoning_content:
@@ -129,7 +129,7 @@ class DeepSeekChat(ChatOpenAI):
                     }
                     for tc in delta.tool_calls
                 ]
-            
+
             # 创建 AIMessageChunk
             message_chunk = AIMessageChunk(
                 content=delta.content or "",
@@ -156,5 +156,3 @@ class DeepSeekChat(ChatOpenAI):
                 )
 
             yield gen_chunk
-
-

@@ -23,11 +23,14 @@ export interface KnowledgeBaseListResponse {
 
 export interface LLMModel {
   id: string
-  name: string
   provider: string
   model_name: string
-  is_enabled: boolean
-  created_at: string
+  support_reasoning: boolean
+  support_image: boolean
+  support_file: boolean
+  support_batch: boolean
+  is_default: boolean
+  sort_order: number
 }
 
 export interface LLMModelListResponse {

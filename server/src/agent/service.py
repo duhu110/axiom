@@ -5,10 +5,14 @@ Agent Service - Agent 服务层
 - 使用 LLM Router（结合用户记忆与上下文）决定子 Agent
 - 然后调用对应子 Agent
 - 确保 store 和 checkpointer 正确传递
+- 支持动态 LLM 模型选择
 """
 from typing import List, AsyncGenerator
+from uuid import UUID
 
 from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.language_models import BaseChatModel
+from langgraph.graph.state import CompiledStateGraph
 
 from .utils import convert_to_vercel_sse
 from .schemas import ChatMessage
@@ -16,7 +20,9 @@ from .dependencies import get_checkpointer, get_store
 from .subagents import QAAgent, RAGAgent, SQLAgent
 from .router_graph import route_by_llm
 from services.logging_service import logger
-from llm_usage.service import record_usage
+from llm.service import record_usage
+from llm import get_llm_instance
+from database import AsyncSessionLocal
 
 
 class AgentService:
@@ -24,12 +30,29 @@ class AgentService:
 
     def __init__(self):
         self._apps = None
-        self._qa_agent = None
-        self._rag_agent = None
-        self._sql_agent = None
+        self._router_llm = None
         self._store = None
 
-    def _init_agents(self):
+    async def _get_llm(self, model_id: UUID | None) -> BaseChatModel:
+        """
+        获取 LLM 实例
+
+        Args:
+            model_id: 模型 ID，为空时使用默认模型
+
+        Returns:
+            LLM 实例
+        """
+        async with AsyncSessionLocal() as db:
+            return await get_llm_instance(model_id, db)
+
+    def _init_agents(self, llm: BaseChatModel):
+        """
+        初始化子 Agent
+
+        Args:
+            llm: LLM 实例，会传递给所有子 Agent
+        """
         if self._apps is not None:
             return
 
@@ -37,21 +60,24 @@ class AgentService:
         checkpointer = get_checkpointer()
         store = get_store()
         self._store = store
+        self._router_llm = llm
 
-        self._qa_agent = QAAgent()
-        self._rag_agent = RAGAgent()
-        self._sql_agent = SQLAgent()
+        # 创建子 Agent，传入统一的 LLM 实例
+        qa_agent = QAAgent(llm=llm)
+        rag_agent = RAGAgent(llm=llm)
+        sql_agent = SQLAgent(llm=llm)
 
         self._apps = {
-            "qa": self._qa_agent.compile(checkpointer=checkpointer, store=store),
-            "rag": self._rag_agent.compile(checkpointer=checkpointer, store=store),
-            "sql": self._sql_agent.compile(checkpointer=checkpointer, store=store),
+            "qa": qa_agent.compile(checkpointer=checkpointer, store=store),
+            "rag": rag_agent.compile(checkpointer=checkpointer, store=store),
+            "sql": sql_agent.compile(checkpointer=checkpointer, store=store),
         }
 
         logger.info("AgentService: SubAgents initialized successfully")
 
-    def _get_app(self, route: str):
-        self._init_agents()
+    def _get_app(self, route: str, llm: BaseChatModel) -> CompiledStateGraph:
+        """获取编译后的子 Agent 图"""
+        self._init_agents(llm)
         return self._apps.get(route, self._apps["qa"])
 
     @staticmethod
@@ -66,21 +92,61 @@ class AgentService:
         messages.append(HumanMessage(content=query))
         return messages
 
-    async def _decide_route(self, query: str, history: List[ChatMessage], user_id: str) -> str:
-        self._init_agents()
+    async def _decide_route(
+        self,
+        query: str,
+        history: List[ChatMessage],
+        user_id: str,
+        llm: BaseChatModel
+    ) -> str:
+        """
+        决定路由目标
+
+        Args:
+            query: 用户查询
+            history: 对话历史
+            user_id: 用户 ID
+            llm: 路由用的 LLM 实例
+
+        Returns:
+            路由目标：qa/rag/sql
+        """
+        self._init_agents(llm)
         input_messages = self._build_input_messages(query=query, history=history)
         route = await route_by_llm(
             query=query,
             messages=input_messages,
             user_id=user_id,
             store=self._store,
+            llm=llm,
         )
         logger.info(f"AgentService: route decision='{route}' for query: {query[:80]}")
         return route
 
-    async def chat(self, query: str, history: List[ChatMessage], session_id: str = "default", kb_id: str | None = None):
-        route = await self._decide_route(query=query, history=history, user_id=session_id)
-        app = self._get_app(route)
+    async def chat(
+        self,
+        query: str,
+        history: List[ChatMessage],
+        session_id: str = "default",
+        kb_id: str | None = None,
+        model_id: UUID | None = None,
+    ):
+        """
+        非流式聊天
+
+        Args:
+            query: 用户查询
+            history: 对话历史
+            session_id: 会话 ID
+            kb_id: 知识库 ID
+            model_id: 模型 ID，为空时使用默认模型
+
+        Returns:
+            AI 回复内容
+        """
+        llm = await self._get_llm(model_id)
+        route = await self._decide_route(query=query, history=history, user_id=session_id, llm=llm)
+        app = self._get_app(route, llm)
 
         input_messages = self._build_input_messages(query=query, history=history)
         config = {
@@ -98,9 +164,29 @@ class AgentService:
         session_id: str,
         user_id: str = "default_user",
         kb_id: str | None = None,
+        model_id: UUID | None = None,
     ) -> AsyncGenerator[str, None]:
-        route = await self._decide_route(query=query, history=history, user_id=user_id)
-        app = self._get_app(route)
+        """
+        流式聊天
+
+        Args:
+            query: 用户查询
+            history: 对话历史
+            session_id: 会话 ID
+            user_id: 用户 ID
+            kb_id: 知识库 ID
+            model_id: 模型 ID，为空时使用默认模型
+
+        Yields:
+            SSE 格式的流式响应
+        """
+        # 获取 LLM 实例
+        llm = await self._get_llm(model_id)
+        model_name = getattr(llm, "model_name", "unknown")
+
+        # 决定路由
+        route = await self._decide_route(query=query, history=history, user_id=user_id, llm=llm)
+        app = self._get_app(route, llm)
 
         input_messages = self._build_input_messages(query=query, history=history)
         config = {
@@ -108,9 +194,8 @@ class AgentService:
             "metadata": {"user_id": user_id, "kb_id": kb_id},
         }
 
-        # 用于收集最终的usage信息
+        # 用于收集最终的 usage 信息
         final_usage = None
-        final_model_name = None
 
         async for event in app.astream_events(
             {"messages": input_messages},
@@ -121,23 +206,18 @@ class AgentService:
                 event_name = event.get('event')
                 logger.debug(f"Agent event: {event_name} name={event.get('name')}")
 
-                # 监听模型输出结束事件，记录usage
+                # 监听模型输出结束事件，记录 usage
                 if event_name == "on_chat_model_end":
                     event_data = event.get('data', {})
                     output = event_data.get('output')
-
-                    # 提取usage信息
-                    final_usage = None
-                    final_model_name = 'deepseek-chat'
 
                     if output and hasattr(output, 'response_metadata') and output.response_metadata:
                         raw_usage = output.response_metadata.get('usage')
 
                         if raw_usage:
-                            # CompletionUsage对象需要转换为字典
                             logger.info(f"Found raw usage: {raw_usage}")
                             try:
-                                # 转换CompletionUsage为简单字典
+                                # 转换 CompletionUsage 为简单字典
                                 if hasattr(raw_usage, 'model_dump'):
                                     final_usage = raw_usage.model_dump()
                                 else:
@@ -156,10 +236,10 @@ class AgentService:
                     # 记录到数据库
                     if final_usage and user_id:
                         try:
-                            logger.info(f"Recording LLM usage for user_id={user_id}, model={final_model_name}")
+                            logger.info(f"Recording LLM usage for user_id={user_id}, model={model_name}")
                             await record_usage(
                                 user_id=user_id,
-                                model_name=final_model_name,
+                                model_name=model_name,
                                 usage=final_usage,
                             )
                             logger.info("✓ LLM usage record saved successfully")

@@ -1,5 +1,8 @@
 "use client";
 
+import type { LucideProps } from "lucide-react";
+import type { ComponentProps, HTMLAttributes } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -8,8 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { BookmarkIcon, type LucideProps } from "lucide-react";
-import type { ComponentProps, HTMLAttributes } from "react";
+import { BookmarkIcon } from "lucide-react";
 
 export type CheckpointProps = HTMLAttributes<HTMLDivElement>;
 
@@ -33,11 +35,12 @@ export const Checkpoint = ({
 export type CheckpointIconProps = LucideProps;
 
 export const CheckpointIcon = ({
+  className,
   children,
   ...props
 }: CheckpointIconProps) =>
   children ?? (
-    <BookmarkIcon className={cn("size-4 shrink-0", props.className)} {...props} />
+    <BookmarkIcon className={cn("size-4 shrink-0", className)} {...props} />
   );
 
 export type CheckpointTriggerProps = ComponentProps<typeof Button> & {

@@ -12,15 +12,15 @@ from typing_extensions import TypedDict
 
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
+from langchain_core.language_models import BaseChatModel
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 
-from config import settings
 from database import AsyncSessionLocal
 from knowledgebase.services.kb_service import KBService
 from knowledgebase.services.retriever_factory import RetrieverFactory
-from ..llm import DeepSeekChat
+from llm.service import record_usage_from_response
 from services.logging_service import logger
 
 
@@ -35,16 +35,16 @@ class RAGAgentState(TypedDict, total=False):
 class RAGAgent:
     """RAG Agent - 基于知识库检索增强回答"""
 
-    def __init__(self, llm=None):
-        """初始化 RAG Agent"""
+    def __init__(self, llm: BaseChatModel):
+        """
+        初始化 RAG Agent
+
+        Args:
+            llm: LLM 实例（必须由外部传入）
+        """
         if llm is None:
-            self.llm = DeepSeekChat(
-                model=settings.agent.deepseek_model,
-                api_key=settings.agent.deepseek_api_key,
-                base_url=settings.agent.deepseek_base_url,
-            )
-        else:
-            self.llm = llm
+            raise ValueError("RAGAgent requires an LLM instance")
+        self.llm = llm
 
         self.workflow = StateGraph(RAGAgentState)
         self.workflow.add_node("rewrite", self._rewrite_question)
@@ -104,6 +104,20 @@ class RAGAgent:
                 [SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)]
             )
             rewritten = getattr(response, "content", "").strip()
+
+            # 记录用量
+            metadata = config.get("metadata", {}) if config else {}
+            user_id = metadata.get("user_id")
+            model_name = getattr(self.llm, "model_name", None) or getattr(self.llm, "model", "unknown")
+            if user_id:
+                try:
+                    await record_usage_from_response(
+                        user_id=user_id,
+                        response=response,
+                        model_name=model_name,
+                    )
+                except Exception as exc:
+                    logger.warning(f"RAGAgent: record_usage for rewrite failed: {exc}")
         except Exception as exc:
             logger.exception("RAGAgent: rewrite failed")
             rewritten = query
@@ -140,7 +154,7 @@ class RAGAgent:
         docs = state.get("documents", [])
 
         if not query:
-            return {"messages": [AIMessage(content="请先输入要检索的问题。")]} 
+            return {"messages": [AIMessage(content="请先输入要检索的问题。")]}
 
         context_blocks = []
         for idx, doc in enumerate(docs[:5], 1):
@@ -149,7 +163,7 @@ class RAGAgent:
                 context_blocks.append(f"[{idx}] {snippet[:1200]}")
 
         if not context_blocks:
-            return {"messages": [AIMessage(content="未检索到相关知识库内容，请尝试换个问法。")]} 
+            return {"messages": [AIMessage(content="未检索到相关知识库内容，请尝试换个问法。")]}
 
         system_prompt = (
             "你是一个基于知识库回答问题的助手。"
@@ -165,6 +179,20 @@ class RAGAgent:
         response = await self.llm.ainvoke(
             [SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)]
         )
+
+        # 记录用量
+        metadata = config.get("metadata", {}) if config else {}
+        user_id = metadata.get("user_id")
+        model_name = getattr(self.llm, "model_name", None) or getattr(self.llm, "model", "unknown")
+        if user_id:
+            try:
+                await record_usage_from_response(
+                    user_id=user_id,
+                    response=response,
+                    model_name=model_name,
+                )
+            except Exception as exc:
+                logger.warning(f"RAGAgent: record_usage for answer failed: {exc}")
 
         return {"messages": [response]}
 

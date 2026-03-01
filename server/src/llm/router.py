@@ -8,10 +8,10 @@ from auth.dependencies import get_current_active_user
 from auth.models import User
 from database import get_async_db
 from response import success
-from llm_usage import schemas, service
+from llm import schemas, service
 
 
-router = APIRouter(prefix="/api/llm", tags=["LLM Usage"])
+router = APIRouter(prefix="/api/llm", tags=["LLM Usage", "LLM Models"])
 
 
 @router.get(
@@ -69,3 +69,25 @@ async def llm_usage_summary(
         group_by=group_by,
     )
     return success({"items": items})
+
+
+@router.post(
+    "/models",
+    response_model=schemas.Response[schemas.LLMModelListResponse],
+    summary="获取可用模型列表",
+    description="获取所有已启用的 LLM 模型列表，不含 API Key 等敏感信息",
+)
+async def get_llm_models(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: Annotated[AsyncSession, Depends(get_async_db)],
+):
+    """
+    获取可用模型列表
+
+    返回所有已启用的 LLM 模型，用户可以看到所有可用模型并选择使用。
+    不返回 api_key 等敏感信息。
+    """
+    models = await service.get_available_models(db)
+    return success({
+        "items": [schemas.LLMModelResponse.model_validate(m) for m in models]
+    })

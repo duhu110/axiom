@@ -18,8 +18,10 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.store.base import BaseStore
 
-from config import settings
-from .llm import DeepSeekChat
+from langchain_core.language_models import BaseChatModel
+from llm.adapters import DeepSeekChat
+from llm import get_llm_instance, ModelNotFoundError
+from database import AsyncSessionLocal
 from .state import RouterState
 from services.logging_service import logger
 
@@ -105,19 +107,29 @@ async def route_by_llm(
     messages: list[BaseMessage],
     user_id: str,
     store: BaseStore,
-    llm: DeepSeekChat | None = None,
+    llm: BaseChatModel | None = None,
 ) -> Literal["qa", "rag", "sql"]:
     """
     使用 LLM + 用户记忆进行路由。
 
     返回严格三选一：qa / rag / sql，异常时 fallback 到关键词规则。
+
+    Args:
+        query: 用户查询
+        messages: 消息列表
+        user_id: 用户 ID
+        store: 记忆存储
+        llm: LLM 实例，为空时使用默认模型
     """
-    router_llm = llm or DeepSeekChat(
-        model=settings.agent.deepseek_model,
-        api_key=settings.agent.deepseek_api_key,
-        base_url=settings.agent.deepseek_base_url,
-        temperature=0,
-    )
+    # 如果没有提供 LLM，使用默认模型
+    if llm is None:
+        try:
+            async with AsyncSessionLocal() as db:
+                llm = await get_llm_instance(None, db)
+        except ModelNotFoundError:
+            # 如果没有配置默认模型，直接使用关键词规则
+            logger.warning("RouterGraph: no default LLM configured, using keyword fallback")
+            return _route_by_keywords(query)
 
     memories_text = _collect_router_memories(store=store, user_id=user_id)
     history_text = _collect_recent_history(messages=messages)
@@ -142,7 +154,7 @@ async def route_by_llm(
     )
 
     try:
-        response = await router_llm.ainvoke(
+        response = await llm.ainvoke(
             [SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)]
         )
         content = getattr(response, "content", "")
@@ -174,7 +186,7 @@ class RouterGraph:
     使用条件边实现路由分发，确保子 Agent 的事件流正确透传
     """
 
-    def __init__(self, subapps: Dict[str, CompiledStateGraph], llm: DeepSeekChat | None = None):
+    def __init__(self, subapps: Dict[str, CompiledStateGraph], llm: BaseChatModel | None = None):
         self.subapps = subapps
         self.llm = llm
         self._workflow = None

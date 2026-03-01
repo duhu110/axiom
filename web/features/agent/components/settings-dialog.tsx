@@ -67,7 +67,7 @@ export function SettingsDialog() {
   const selectedKbName = knowledgeBases.find(kb => kb.id === kbId)?.name
 
   // 获取选中的模型名称
-  const selectedModelName = models.find(m => m.id === modelId)?.name
+  const selectedModelName = models.find(m => m.id === modelId)?.model_name
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -197,9 +197,9 @@ export function SettingsDialog() {
                     models.map((model) => (
                       <SelectItem key={model.id} value={model.id}>
                         <div className="flex flex-col">
-                          <span>{model.name}</span>
+                          <span>{model.model_name}</span>
                           <span className="text-[10px] text-muted-foreground">
-                            {model.provider} · {model.model_name}
+                            {model.provider}
                           </span>
                         </div>
                       </SelectItem>
